@@ -9,37 +9,34 @@
 #ifdef U8X8_HAVE_HW_I2C
 #include <Wire.h>
 #endif
+#include "winbondflash.h"
 
 
-/*
-  U8glib Example Overview:
-    Frame Buffer Examples: clearBuffer/sendBuffer. Fast, but may not work with all Arduino boards because of RAM consumption
-    Page Buffer Examples: firstPage/nextPage. Less RAM usage, should work with all Arduino boards.
-    U8x8 Text Only Example: No RAM usage, direct communication with display controller. No graphics, 8x8 Text only.
-    
-  This is a page buffer example.    
-*/
 int incomingByte = 0;   // for incoming serial data
 // OM127 LCD Screen Type
 U8G2_ST7565_ERC12864_1_4W_SW_SPI  u8g2(U8G2_R0,/* clock=*/ PB0, /* data=*/ PB1, /* cs=*/ PB10, /* dc=*/ PB8, /* reset=*/PC13);
+
+
 //HW Serial UART1 PA9/PA10
 
  const long interval = 500; 
  const int ledPin =  PA8;
  unsigned long previousMillis = 0; 
  int ledState = HIGH; 
+int LOG_ENABLED = 0;
+winbondFlashSPI mem;
+#define SPI_SLAVE_SEL_PIN    PA4
+#define Up_Button            PB15
+#define Down_Button          PB12
+#define Exit_Button          PB13
+#define Menu_Button          PB14
+#define USB_Detect           PC15
+#define LED_CAN_MUTE         PA8
 
-#define BPIN 0
-#define SPIN 1
-#define Up_Button PB15
-#define Down_Button PB12
-#define Exit_Button PB13
-#define Menu_Button PB14
-#define USB_Detect PC15
-#define LED_CAN_MUTE PA8
 
 
 byte msgD0 ; // variable to be used in the example.
+//need to switch to canmsg array, for testing this works
 int old_ID =0;
 int DataOne =0;
 int DataTwo =0;
@@ -62,31 +59,29 @@ void CANSetup(void)
   Serial.end();
 
    Serial1.println("UART Online, About to setup CAN");
-  // Initialize CAN module
- // Stat= canBus.map(CAN_GPIO_PB8_PB9);       // This setting is already wired in the OM127
+// Initialize CAN module
   Stat = canBus.map(CAN_GPIO_PA11_PA12);       // This setting is already wired in the OM127
     if (Stat != CAN_OK){
-       Serial1.println("ERROR map");
+       Serial1.println("ERROR map can port");
        Serial1.println(Stat,DEC);
     }
-  /*
-   * CAN_SPEED_33,
- CAN_SPEED_95,
+/*
+* CAN_SPEED_33,
+  CAN_SPEED_95,
   CAN_SPEED_125,
   CAN_SPEED_250,
   CAN_SPEED_500,
   CAN_SPEED_1000,
    */
- // canBus.set_pool_mode();
+
   Stat = canBus.begin(CAN_SPEED_500, CAN_MODE_NORMAL);    // Other speeds go from 125 kbps to 1000 kbps. CAN allows even more choices.
   if (Stat != CAN_OK){
-       Serial1.println("ERROR begin");
+       Serial1.println("ERROR begin, CAN BUS Stuck");
        Serial1.println(Stat,DEC);
   }
   //filter(uint8 idx, uint32 id, uint32 mask, uint32 extID)
   //canBus.filter(0, 0x00ffee00, 0x1fffffff,0);          // filter don't work for ID 0x00FFEE00
-  canBus.filter(0, 0x7df, 0,0);                // filter work for ID 0x00FFEE00
-  //canBus.filter(1, 0, 0x1FFFFFFF, 0x1FFFFFFF);
+  canBus.filter(0, 0x7df, 0,0);                // listen for OBD req, ack simple 
   canBus.set_irq_mode();              // Use irq mode (recommended), so the handling of incoming messages
                                       // will be performed at ease in a task or in the loop. The software fifo is 16 cells long, 
                                       // allowing at least 15 ms before processing the fifo is needed at 125 kbps
@@ -94,13 +89,14 @@ void CANSetup(void)
   Stat = canBus.status();
   if (Stat != CAN_OK)
   {
-       Serial1.println("ERROR status");
+       Serial1.println("ERROR enabling CAN system");
        Serial1.println(Stat,DEC);
   }
   else
-   Serial1.println("CanBus INit Passed ");
+   Serial1.println("possible can error ");
      /* Your own error processing here */ ;   // Initialization failed
 }
+
 
 #define CAN_INAK_TimeOut 30
 // Send one frame. Parameter is a pointer to a frame structure (above), that has previously been updated with data.
@@ -150,11 +146,11 @@ void SendCANmessage(long id=0x001, byte dlength=8, byte d0=0x00, byte d1=0x00, b
   msg.Data[6] = d6 ;
   msg.Data[7] = d7 ;
 //Serial1.println("sendcan ");
- // digitalWrite(PA8, LOW);    // turn the onboard LED on
+//  digitalWrite(LED_CAN_MUTE, LOW);    // turn the onboard LED on - also tied to /CAN Enable - Tie low or floating for CAN enable
   CANsend(&msg) ;      // Send this frame
   delay(180);              
- // digitalWrite(PA8, HIGH);   // turn the LED off 
-  delay(100);  
+ // digitalWrite(LED_CAN_MUTE, HIGH);   // turn the LED off 
+ // delay(100);  
   //Serial1.println("endsend");
   Serial1.print(id,HEX);
     Serial1.print("#");
@@ -176,10 +172,9 @@ void SendCANmessage(long id=0x001, byte dlength=8, byte d0=0x00, byte d1=0x00, b
           
 }
 
-// The application program starts here
-int bState = 0;         // variable for reading the pushbutton status
-int sState = 0;         // variable for reading the switch status
-byte st = 0x31; // buttot 1 on the CD30MP3
+
+
+byte st = 0x31; // canbus reply value- soon not needed
 
 
   
@@ -191,11 +186,11 @@ void box()
 //u8g2.userInterfaceMessage("Boot STM32", "darkspr1te 2018", "USB/CAN Switch", " Ok \n Cancel ");
 Button_Key = u8g2.userInterfaceSelectionList("Darkspr1te OM127 Menu", 1, "Change CAN Speed\nChange CAN bits\nSomething else here");
 switch (Button_Key) {
-    case 0:
+       case 0:
       //do something when var equals 1
        Serial1.println("Select cancel");
       break;
-    case 2:
+      case 2:
       //do something when var equals 2
       Serial1.println("option 1");
       break;
@@ -203,23 +198,23 @@ switch (Button_Key) {
       //do something when var equals 2
       Serial1.println("option 2");
       break;      
-            case 4:
+      case 4:
       //do something when var equals 2
       Serial1.println("option 3");
       break;  
-            case 5:
+      case 5:
       //do something when var equals 2
       Serial1.println("option 4");
       break;  
-            case 6:
+      case 6:
       //do something when var equals 2
       Serial1.println("option 5");
       break;  
-            case 7:
+      case 7:
       //do something when var equals 2
       Serial1.println("option 6");
       break;  
-    default:
+      default:
       // if nothing else matches, do the default
       // default is optional
       Serial1.println("default");
@@ -274,60 +269,103 @@ void Led_Blink()
   }
 
  }
+
+//SPI Flash Stuff
+void read_buffer(){
+        int addr = Serial1.parseInt();
+        int len = Serial1.parseInt();
+        Serial1.print(F("addr=0x"));
+        Serial1.print(addr>>8,HEX);
+        Serial1.print(addr,HEX);
+        Serial1.print(F(",len=0x"));
+        Serial1.print(len>>8,HEX);
+        Serial1.print(len,HEX);
+        Serial1.println(F(":"));
+        uint8_t *buf = new uint8_t[len];
+        while(mem.busy());
+        mem.read(addr,buf,len);
+        for(int i = 0;i < len; i++)
+        {
+          Serial1.print((char)buf[i]);
+        } 
+}
 void setup(void) {
 
 /* SET PA8 output for LED 
- *  #define Up_Button PB15
+ *  
+#define Up_Button PB15
 #define Down_Button PB12
 #define Exit_Button PB13
 #define Menu_Button PB14
 #define USB_Detect PC15
+#define SPI_SLAVE_SEL_PIN PA4
 
 
  */
-
+ //SPI Setup
+ 
+  pinMode(SPI_SLAVE_SEL_PIN ,OUTPUT);
+  SPI.begin();
+  SPI.setBitOrder(MSBFIRST);
+  SPI.setClockDivider(SPI_CLOCK_DIV16);
+  SPI.setDataMode(SPI_MODE0);
+    if(mem.begin(_W25Q64,SPI,SPI_SLAVE_SEL_PIN)){
+      LOG_ENABLED = 1;
+      Serial1.println("Flash OK, Logging allowed");
+    }
+  else
+  {
+    Serial1.println("Flash init FAILED, cannot log data");
+    LOG_ENABLED = 0;
+    while(1);
+  }
+  //Button Setup
   pinMode(Down_Button, INPUT);//Down
   pinMode(Exit_Button, INPUT);//Exit
   pinMode(Menu_Button, INPUT);//Enter
   pinMode(Up_Button, INPUT);//Up
   pinMode(USB_Detect, INPUT);//USB Plug detect
-  //pinMode(PA9,OUTPUT);//UART 1 TX 
-  //pinMode(PA10,OUTPUT);//UART 1 RX
-  //pinMode(PA12,OUTPUT);//CAN 1 TX 
-  //pinMode(PA11,OUTPUT);//CAN 1 RX 
+
+  
+  //Normally PA13, routed to PA8 for temp usage 
   pinMode(LED_CAN_MUTE, OUTPUT);
   digitalWrite(LED_CAN_MUTE,LOW);
   pinMode(PA13, OUTPUT);
   digitalWrite(PA13,LOW);
   
 //begin(uint8_t menu_select_pin, uint8_t menu_next_pin, uint8_t menu_prev_pin, uint8_t menu_up_pin = U8X8_PIN_NONE, uint8_t menu_down_pin = U8X8_PIN_NONE, uint8_t menu_home_pin = U8X8_PIN_NONE)
+// init LCD with Menu buttons tied in
   u8g2.begin(PB14,PB15, PB12, U8X8_PIN_NONE, U8X8_PIN_NONE, PB13);
  // u8g2.begin();  
-  Serial1.begin(115200);
-  Serial1.println("Serial1 OK Ready");
+  Serial1.begin(115200);//test , in usage UART1 wont be available
+  Serial1.println("Serial1 OK Ready");//test , in usage UART1 wont be available
 
 
 //  pinMode(PA11, OUTPUT); // input for hardware switch
  // digitalWrite(PA11,LOW);
 
 
-    msgD0 = 0x01;
+ //   msgD0 = 0x01;
     CANSetup() ; 
+//Debug data, print clock speed to confirm CAN bitrates
     Serial1.print("CPU Speed ");
-     Serial1.println(F_CPU);
-     Serial1.print("PCLK1 speed ");
+    Serial1.println(F_CPU);
+    Serial1.print("PCLK1 speed ");
     Serial1.println(PCLK1); 
     Serial1.print("PCLK2 speed ");
     Serial1.println(PCLK1); 
   delay(1500);
+  u8g2.setContrast(0);//in usage remove delay from setup procedure, current shows lcd is working by going black,clear then text.maybe turn into boot routine. maybe add a logo
 }
 
 
 void loop(void) {
   u8g2.firstPage();
-  u8g2.setContrast(0);
-
+  
+  
+  //delay(2500);
   do {
+    //test , in usage UART1 wont be available
      if (Serial1.available() > 0) {
                 // read the incoming byte:
                 incomingByte = Serial1.read();
@@ -357,12 +395,13 @@ void loop(void) {
       }
       
     u8g2.setFont(u8g2_font_5x7_tf);
-    u8g2.drawStr(2,6,"darkspr1te debug");
+    u8g2.drawStr(2,7,"darkspr1te debug - OM127 OSS");
     u8g2.setCursor(2, 15);
     u8g2.print(incomingByte,DEC);
     u8g2.setCursor(2, 30);
+    //USB power detect will allow 'upgrades' via the USB bootloader which shares mem/pins with CAN, in setup if USB_Detect >0 then activate serial and not CAN, possible quick way of dumping flash log
     u8g2.print("USB Power ");
-    u8g2.print(digitalRead(PC15));
+    u8g2.print(digitalRead(USB_Detect));
     u8g2.drawFrame(0,0,128,64);
      if (old_ID != 0){
                   u8g2.setCursor(2, 40);
