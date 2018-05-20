@@ -146,7 +146,7 @@ void SendCANmessage(long id=0x001, byte dlength=8, byte d0=0x00, byte d1=0x00, b
   msg.Data[6] = d6 ;
   msg.Data[7] = d7 ;
 //Serial1.println("sendcan ");
-//  digitalWrite(LED_CAN_MUTE, LOW);    // turn the onboard LED on - also tied to /CAN Enable - Tie low or floating for CAN enable
+  digitalWrite(LED_CAN_MUTE, LOW);    // turn the onboard LED on - also tied to /CAN Enable - Tie low or floating for CAN enable
   CANsend(&msg) ;      // Send this frame
   delay(180);              
  // digitalWrite(LED_CAN_MUTE, HIGH);   // turn the LED off 
@@ -302,23 +302,27 @@ void setup(void) {
 
 
  */
- //SPI Setup
+   Serial1.begin(115200);//test , in usage UART1 wont be available
+  Serial1.println("Serial1 OK Ready");//test , in usage UART1 wont be available
+ //SPI Setup -currently causes a bug, i think it's erasing the system eeprom 
  
   pinMode(SPI_SLAVE_SEL_PIN ,OUTPUT);
   SPI.begin();
   SPI.setBitOrder(MSBFIRST);
   SPI.setClockDivider(SPI_CLOCK_DIV16);
   SPI.setDataMode(SPI_MODE0);
+  
     if(mem.begin(_W25Q64,SPI,SPI_SLAVE_SEL_PIN)){
-      LOG_ENABLED = 1;
+    //  LOG_ENABLED = 1;
       Serial1.println("Flash OK, Logging allowed");
     }
   else
   {
     Serial1.println("Flash init FAILED, cannot log data");
-    LOG_ENABLED = 0;
+   // LOG_ENABLED = 0;
     while(1);
   }
+  
   //Button Setup
   pinMode(Down_Button, INPUT);//Down
   pinMode(Exit_Button, INPUT);//Exit
@@ -327,7 +331,7 @@ void setup(void) {
   pinMode(USB_Detect, INPUT);//USB Plug detect
 
   
-  //Normally PA13, routed to PA8 for temp usage 
+  //Normally PA13, routed to PA8 for tempory CAN_MUTE control 
   pinMode(LED_CAN_MUTE, OUTPUT);
   digitalWrite(LED_CAN_MUTE,LOW);
   pinMode(PA13, OUTPUT);
@@ -337,8 +341,7 @@ void setup(void) {
 // init LCD with Menu buttons tied in
   u8g2.begin(PB14,PB15, PB12, U8X8_PIN_NONE, U8X8_PIN_NONE, PB13);
  // u8g2.begin();  
-  Serial1.begin(115200);//test , in usage UART1 wont be available
-  Serial1.println("Serial1 OK Ready");//test , in usage UART1 wont be available
+
 
 
 //  pinMode(PA11, OUTPUT); // input for hardware switch
@@ -361,11 +364,8 @@ void setup(void) {
 
 void loop(void) {
   u8g2.firstPage();
-  
-  
-  //delay(2500);
   do {
-    //test , in usage UART1 wont be available
+    //test , in usage UART1 wont be available as it controls kline
      if (Serial1.available() > 0) {
                 // read the incoming byte:
                 incomingByte = Serial1.read();
@@ -402,7 +402,7 @@ void loop(void) {
     //USB power detect will allow 'upgrades' via the USB bootloader which shares mem/pins with CAN, in setup if USB_Detect >0 then activate serial and not CAN, possible quick way of dumping flash log
     u8g2.print("USB Power ");
     u8g2.print(digitalRead(USB_Detect));
-    u8g2.drawFrame(0,0,128,64);
+    u8g2.drawFrame(0,0,128,64);// lcd is 128,64 
      if (old_ID != 0){
                   u8g2.setCursor(2, 40);
                   u8g2.print("Code $");
@@ -425,7 +425,7 @@ void loop(void) {
                   u8g2.print(".");
                  
      }
-
+//display canbus message, need to move into seperate area
         if ((r_msg = canBus.recv()) != NULL){
                   old_ID=r_msg->ID;
                   DataOne=r_msg->Data[0];             
@@ -447,14 +447,6 @@ void loop(void) {
         }
     
   } while ( u8g2.nextPage() );
- //delay(1000);
-  //digitalWrite(PA8, LOW);
-//delay(1000);
-//digitalWrite(PA8, HIGH);
-//Led_Blink();
-   
-
- 
 }
 
 

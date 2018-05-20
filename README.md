@@ -1,6 +1,11 @@
 # OM127-reboot
 Basic board bring up, CAN 500 working, LCD working, Buttons (polling) Working, UART1 Serial Working, USB/USB Detect working. Partial REV ENG of schematics,
 
+CPU:STM32F103RB 
+CAN IC:TJA1050
+K-Line : Transistor/Opamp
+
+
 Still TODO:
 Add more CAN OBD logic,
 remap SWD to GPIO for CAN chip mute control
@@ -21,10 +26,14 @@ EEPROM not working, SPI still needs work :- FIXED
 Requires modified Arduino STM32F1x see :- http://www.stm32duino.com/viewtopic.php?t=72
 also
 rogerclarkmelbourne/Arduino_STM32@master...coddingtonbear:HardwareCAN
-http://www.stm32duino.com/viewtopic.php?t=9 // SPI flash lib
+also SPI flash lib
+http://www.stm32duino.com/viewtopic.php?t=9
 
 Device URL :- http://www.autophix.com/en/obd-mate/om127.html
 
 PA13 is shared with CAN Mute & SWD, lift leg and leave floating for CANBUS TX Enable or add a jumper wire from solder point next to R18 to PIN8 of the
 TJA1050 SO8 chip, leg must be lift from pad to allow control (PA13 is always high when remapped for SWD)
 
+
+Will be adding K-Line soon
+https://github.com/iwanders/OBD9141
