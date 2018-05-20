@@ -40,3 +40,13 @@ https://github.com/iwanders/OBD9141
 **********************
 I have included a current as of march 2018 (all needed)stmduino libs, in linux place in your /home/username/.arduino15 folder and the arduino system will accept it, 
 note of you update any libs you could break the build, this is mainly the alterations to stmduino system
+======================
+i sudgest you also get openocd from source and build, openocd is required to see memory values/debugging, this is not a dev board so not all pins broken out to easy access
+see pinouts in pdf for real pin descriptions,often i use just PA12 instead of Up_Button, UART1 is on resistors R1-TX and R31 RX (needs pull up)
+SWD port is as follows
+
+
+USB Port side------GND--SWCLK---SWDIO---3.3V----------Cable out to OBD
+
+
+
