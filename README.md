@@ -1,10 +1,10 @@
 # OM127-reboot
-Basic board bring up, CAN 500 working, LCD working, Buttons (polling) Working, UART1 Serial Working, USB/USB Detect working. Partial REV ENG of schematics,
+Basic board bring up, CAN 500 working/Shared with USB, LCD working, Buttons (polling) Working, UART1 Serial Working(UARTS shared with KWP/PWM lines, USB/USB Detect working. Partial REV ENG of schematics,
 
 CPU:STM32F103RB 
 CAN IC:TJA1050
-K-Line : Transistor/Opamp
-
+K-Line: Transistor/Opamp
+PWM Line: 
 
 Still TODO:
 Add more CAN OBD logic,
@@ -37,3 +37,6 @@ TJA1050 SO8 chip, leg must be lift from pad to allow control (PA13 is always hig
 
 Will be adding K-Line soon
 https://github.com/iwanders/OBD9141
+**********************
+I have included a current as of march 2018 (all needed)stmduino libs, in linux place in your /home/username/.arduino15 folder and the arduino system will accept it, 
+note of you update any libs you could break the build, this is mainly the alterations to stmduino system
