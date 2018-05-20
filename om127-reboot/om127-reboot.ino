@@ -234,6 +234,11 @@ void CAN_Change()
 
 void SNIFF_Menu()
 {
+    CanMsg* local_msg = new CanMsg[6] ;
+   int LCD_ROW = 0;
+   int MAX_ROW = 6;
+   int ACTUAL_ROW = 0;
+   int LOOPIN_NOW =0 ;
         while (digitalRead(Exit_Button)==1)
         {
            u8g2.firstPage();
@@ -241,8 +246,15 @@ void SNIFF_Menu()
                 {
                   u8g2.setCursor(2, 8);
                   u8g2.print("Sniffer Menu");
+               //   for(int i = 0;i < len; i++)
+                  
+                  
                   if ((r_msg = canBus.recv()) != NULL)
                   {
+                      local_msg[ACTUAL_ROW].ID = r_msg->ID;
+                      for(int i = 0;i < 7; i++)
+                        local_msg[ACTUAL_ROW].Data[i] = r_msg->Data[i];
+                      
                       old_ID=r_msg->ID;
                       DataOne=r_msg->Data[0];             
                       DataTwo=r_msg->Data[1];             
@@ -257,16 +269,24 @@ void SNIFF_Menu()
                       SendCANmessage(r_msg->ID+9, 8, 0x04, 0x00, 0x00) ;
                //   u8g2.setFont(u8g2_font_5x7_tf);
                   //u8g2.print(2,6,r_msg->ID);
-
-                      canBus.free();
+                      if (ACTUAL_ROW>MAX_ROW) 
+                        ACTUAL_ROW=1;
+                          else
+                        ACTUAL_ROW++;
+                        canBus.free();
          
                   }
                   if (old_ID != 0)
                     {
-                      u8g2.setCursor(2, 40);
-                      u8g2.print("Code $");
-                      u8g2.setCursor(2, 49);
-                      u8g2.print(old_ID,HEX);
+                //      u8g2.setCursor(2, 16);
+               //       u8g2.print("Code $");
+            for(int i = 0;i < ACTUAL_ROW; i++)
+              {
+                      u8g2.setCursor(2,((i*8))+16);
+                      u8g2.print(local_msg[i].ID,HEX);
+                       for(int b = 0;b < 7; b++)
+                          u8g2.print(local_msg[i].Data[b],HEX);
+                   /*   u8g2.print(old_ID,HEX);
                       u8g2.print(".");
                       u8g2.print( DataOne,HEX);
                       u8g2.print(".");
@@ -282,8 +302,13 @@ void SNIFF_Menu()
                       u8g2.print(".");
                       u8g2.print( DataSeven,HEX);
                       u8g2.print(".");
+                      u8g2.setCursor(2,((i)*8)+16);
+                      u8g2.print(local_msg[i].ID,HEX);*/
+              }
                  }
+                  
             }while ( u8g2.nextPage() );
+                
         } 
 }
   
