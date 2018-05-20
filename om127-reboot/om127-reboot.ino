@@ -61,9 +61,8 @@ void CANSetup(void)
 {
   CAN_STATUS Stat ;
 
-  Serial.end();
-
-   Serial1.println("UART Online, About to setup CAN");
+  Serial.end();//Ensure USB has given up PA11/PA12
+   Serial1.println("About to setup CAN");
 // Initialize CAN module
   Stat = canBus.map(CAN_GPIO_PA11_PA12);       // This setting is already wired in the OM127
     if (Stat != CAN_OK){
@@ -178,26 +177,25 @@ void SendCANmessage(long id=0x001, byte dlength=8, byte d0=0x00, byte d1=0x00, b
 }
 
 
-
-byte st = 0x31; // canbus reply value- soon not needed
-
-
-  
-void box()
+void CAN_Change()
 {
   int Button_Key =0;
-  u8g2.setFont(u8g2_font_6x10_tf);
-//u8g2.setFontRefHeightAll();    /* this will add some extra space for the text inside the buttons */
-//u8g2.userInterfaceMessage("Boot STM32", "darkspr1te 2018", "USB/CAN Switch", " Ok \n Cancel ");
-Button_Key = u8g2.userInterfaceSelectionList("Darkspr1te OM127 Menu", 1, "Change CAN Speed\nChange CAN bits\nSomething else here");
-switch (Button_Key) {
+  CAN_STATUS Stat ;
+  
+  Button_Key = u8g2.userInterfaceSelectionList("CAN Speed Options", 1, "CAN 500\nCAN 250");
+  switch (Button_Key) {
        case 0:
       //do something when var equals 1
+      
        Serial1.println("Select cancel");
       break;
       case 2:
-      //do something when var equals 2
-      Serial1.println("option 1");
+      Serial1.println("can_change_250");
+      Stat = canBus.begin(CAN_SPEED_250, CAN_MODE_NORMAL);
+        if (Stat != CAN_OK){
+       Serial1.println("ERROR begin, CAN BUS Stuck");
+       Serial1.println(Stat,DEC);
+  }   
       break;
       case 3:
       //do something when var equals 2
@@ -220,20 +218,158 @@ switch (Button_Key) {
       Serial1.println("option 6");
       break;  
       default:
+      
+      
       // if nothing else matches, do the default
       // default is optional
-      Serial1.println("default");
+      Serial1.println("can_change_500");
+      Stat = canBus.begin(CAN_SPEED_500, CAN_MODE_NORMAL);
+        if (Stat != CAN_OK){
+       Serial1.println("ERROR begin, CAN BUS Stuck");
+       Serial1.println(Stat,DEC);
+  }
       break;
   }
-Serial1.println("Box Draw finished");
+}
+
+void SNIFF_Menu()
+{
+        while (digitalRead(Exit_Button)==1)
+        {
+           u8g2.firstPage();
+              do 
+                {
+                  u8g2.setCursor(2, 8);
+                  u8g2.print("Sniffer Menu");
+                  if ((r_msg = canBus.recv()) != NULL)
+                  {
+                      old_ID=r_msg->ID;
+                      DataOne=r_msg->Data[0];             
+                      DataTwo=r_msg->Data[1];             
+                      DataThree=r_msg->Data[2];             
+                      DataFour=r_msg->Data[3];             
+                      DataFive=r_msg->Data[4];             
+                      DataSix=r_msg->Data[5];             
+                      DataSeven=r_msg->Data[6];             
+                      DataEight=r_msg->Data[7];             
+                  
+                      long msgID = 0x7DF ;
+                      SendCANmessage(r_msg->ID+9, 8, 0x04, 0x00, 0x00) ;
+               //   u8g2.setFont(u8g2_font_5x7_tf);
+                  //u8g2.print(2,6,r_msg->ID);
+
+                      canBus.free();
+         
+                  }
+                  if (old_ID != 0)
+                    {
+                      u8g2.setCursor(2, 40);
+                      u8g2.print("Code $");
+                      u8g2.setCursor(2, 49);
+                      u8g2.print(old_ID,HEX);
+                      u8g2.print(".");
+                      u8g2.print( DataOne,HEX);
+                      u8g2.print(".");
+                      u8g2.print( DataTwo,HEX);
+                      u8g2.print(".");
+                      u8g2.print( DataThree,HEX);
+                      u8g2.print(".");
+                      u8g2.print( DataFour,HEX);
+                      u8g2.print(".");
+                      u8g2.print( DataFive,HEX);
+                      u8g2.print(".");
+                      u8g2.print(DataSix,HEX);
+                      u8g2.print(".");
+                      u8g2.print( DataSeven,HEX);
+                      u8g2.print(".");
+                 }
+            }while ( u8g2.nextPage() );
+        } 
+}
+  
+void Main_Menu()
+{
+  int Button_Key =0;
+  uint8_t PID_P1 = 0;
+  uint8_t PID_P2 = 0;
+  uint8_t PID_P3 = 0;
+  int input_val = 0;
+  u8g2.setFont(u8g2_font_6x10_tf);
+//u8g2.setFontRefHeightAll();    /* this will add some extra space for the text inside the buttons */
+//u8g2.userInterfaceMessage("Boot STM32", "darkspr1te 2018", "USB/CAN Switch", " Ok \n Cancel ");
+Button_Key = u8g2.userInterfaceSelectionList("Darkspr1te OM127 Menu", 1, "Change CAN Speed\nChange CAN bits\nChange PID Value\nSniffer Menu\nADC Menu");
+switch (Button_Key) {
+       case 0:
+      //do something when var equals 1
+       Serial1.println("Select cancel");
+      break;
+      case 2:
+      //do something when var equals 2
+      Serial1.println("option 1");
+
+      break;
+      case 3:
+      //do something when var equals 2
+      Serial1.println("option 2");
+      input_val = u8g2.userInterfaceInputValue("Select PID Value  0x?00", "PID Value 1=", &PID_P1, 5, 1, 1, " hex");
+      if (input_val != 1)
+          break;
+      input_val = u8g2.userInterfaceInputValue("Select PID Value  0x??0", "PID Value 2=", &PID_P2, 1, 5, 1, " hex");
+      if (input_val != 1)
+         break;
+      input_val = u8g2.userInterfaceInputValue("Select PID Value  0x???", "PID Value 3=", &PID_P3, 1, 5, 1, " hex");
+      if (input_val != 1)
+         break;
+    //do calcs to combine pid into one figure    
+      break;      
+      case 4:
+      //do something when var equals 2
+      Serial1.println("Sniff Menu 3");
+      SNIFF_Menu();
+      break;  
+      case 5:
+      //do something when var equals 2
+      Serial1.println("option 4");
+      
+      while (digitalRead(Exit_Button)==1)
+      {
+              u8g2.firstPage();
+              do 
+                {
+                  u8g2.setCursor(2, 8);
+                  u8g2.print("ADC Values- ");
+                  u8g2.setCursor(2, 16);
+                  u8g2.print("PC0/1/2/3-PC4/PC5");
+                  u8g2.setCursor(2, 25);
+                  u8g2.println((analogRead(PC0)*3300)/4096);u8g2.println(" ");
+                  u8g2.println((analogRead(PC1)*3300)/4096);u8g2.println(" ");
+                  u8g2.print((analogRead(PC2)*3300)/4096);u8g2.println(" ");
+                  u8g2.print((analogRead(PC3)*3300)/4096);
+                  u8g2.setCursor(2, 33);
+                  u8g2.print((analogRead(PC4)*3300)/4096);u8g2.println(" ");
+                  u8g2.print((analogRead(PC5)*3300)/4096); 
+                  if (digitalRead(Exit_Button)!=1){break;}  
+                } while ( u8g2.nextPage() );
+     }
+      break;   
+      default:
+  // if nothing else matches, do the default
+  // default is optional
+      Serial1.println("can_change");
+      CAN_Change();
+
+      break;
+  }
+Serial1.println("Main_Menu finished");
  while (digitalRead(Exit_Button)!=1){delay(100);}
 }
-void box_two()
+
+void option_Page_One()
 {
   int Button_Key =0;
   u8g2.setFont(u8g2_font_6x10_tf);
 
-Button_Key = u8g2.userInterfaceMessage("Boot STM32", "darkspr1te 2018", "msg3", " Ok \n Cancel ");
+Button_Key = u8g2.userInterfaceMessage("Enable USB STM32", "darkspr1te 2018", "*Disables CAN*", " Ok \n Cancel ");
 switch (Button_Key) {
     case 0:
       //do something when var equals 1
@@ -249,7 +385,7 @@ switch (Button_Key) {
       Serial1.println("Select OK");
       break;
   }
-Serial1.println("Box Draw finished");
+Serial1.println("USB Menu Finished");
   while (digitalRead(Exit_Button)!=1){}
 }
 
@@ -308,6 +444,9 @@ void setup(void) {
 
  */
    Serial1.begin(115200);//test , in usage UART1 wont be available
+   Serial1.println("-------------------");
+   Serial1.println("");
+   Serial1.println("");
   Serial1.println("Serial1 OK Ready");//test , in usage UART1 wont be available
  //SPI Setup -currently causes a bug, i think it's erasing the system eeprom 
  
@@ -334,28 +473,25 @@ void setup(void) {
   pinMode(Menu_Button, INPUT);//Enter/PB14
   pinMode(Up_Button, INPUT);//Up
   pinMode(USB_Detect, INPUT);//USB Plug detect
-
+// testing ADC
+pinMode(PA0, INPUT_ANALOG);
+pinMode(PC1, INPUT_ANALOG);
+pinMode(PC2, INPUT_ANALOG);
+pinMode(PC3, INPUT_ANALOG);
+pinMode(PC4, INPUT_ANALOG);
+pinMode(PC5, INPUT_ANALOG);
   
   //Normally PA13, routed to PA8 for tempory CAN_MUTE control 
   pinMode(LED_CAN_MUTE, OUTPUT);
   digitalWrite(LED_CAN_MUTE,LOW);
+  //PA13 used by SWDIO debug right now, later we have to remap to gain control to revert to factory board setup
   pinMode(PA13, OUTPUT);
   digitalWrite(PA13,LOW);
   
 //begin(uint8_t menu_select_pin, uint8_t menu_next_pin, uint8_t menu_prev_pin, uint8_t menu_up_pin = U8X8_PIN_NONE, uint8_t menu_down_pin = U8X8_PIN_NONE, uint8_t menu_home_pin = U8X8_PIN_NONE)
 // init LCD with Menu buttons tied in
-u8g2.begin(Menu_Button,Down_Button,Up_Button,U8X8_PIN_NONE,U8X8_PIN_NONE,Exit_Button);
-  //u8g2.begin(PB14,PB12, PB15, U8X8_PIN_NONE, U8X8_PIN_NONE, PB13);
- // u8g2.begin();  
-
-
-
-//  pinMode(PA11, OUTPUT); // input for hardware switch
- // digitalWrite(PA11,LOW);
-
-
- //   msgD0 = 0x01;
-    CANSetup() ; 
+  u8g2.begin(Menu_Button,Down_Button,Up_Button,U8X8_PIN_NONE,U8X8_PIN_NONE,Exit_Button);
+  CANSetup() ; 
 //Debug data, print clock speed to confirm CAN bitrates
     Serial1.print("CPU Speed ");
     Serial1.println(F_CPU);
@@ -372,7 +508,7 @@ void loop(void) {
   u8g2.firstPage();
   do {
     //test , in usage UART1 wont be available as it controls kline
-     if (Serial1.available() > 0) {
+  /*   if (Serial1.available() > 0) {
                 // read the incoming byte:
                 incomingByte = Serial1.read();
                Serial1.print(incomingByte,DEC);
@@ -383,33 +519,40 @@ void loop(void) {
                    box_two();
                  }
         }
-      if (digitalRead(Up_Button)==1){
-      
+       */
+      if (digitalRead(Up_Button)!=1){
+            while (digitalRead(Up_Button)!=1){}
+                //nothing right now
+                
+            Serial1.print("Up Pressed");
         
       }
       if (digitalRead(Menu_Button)!=1){
           while (digitalRead(Menu_Button)!=1){}
-                box();
-      }
-      if (digitalRead(Down_Button)==1){
-        
+                Main_Menu();
+                }
+      if (digitalRead(Down_Button)!=1){
+              while (digitalRead(Down_Button)!=1){}
+                //nothing right now                
+            Serial1.print("Down Pressed");
       }
       if (digitalRead(Exit_Button)!=1){
-          while (digitalRead(Exit_Button)!=1){}
-          
-                box_two();
+          while (digitalRead(Exit_Button)!=1){}          
+            //    box_two(); nothing right now
       }
+      if (digitalRead(USB_Detect)==1)
+        {
+          option_Page_One();
+        }
       
     u8g2.setFont(u8g2_font_5x7_tf);
     u8g2.drawStr(2,7,"darkspr1te debug - OM127 OSS");
     u8g2.setCursor(2, 15);
     u8g2.print(incomingByte,DEC);
     u8g2.setCursor(2, 30);
-    //USB power detect will allow 'upgrades' via the USB bootloader which shares mem/pins with CAN, in setup if USB_Detect >0 then activate serial and not CAN, possible quick way of dumping flash log
-    u8g2.print("USB Power ");
-    u8g2.print(digitalRead(USB_Detect));
+    //USB power detect will allow 'upgrades' via the USB bootloader which shares mem/pins with CAN, in setup if USB_Detect >0 then activate serial and not CAN, possible quick way of dumping flash log   
     u8g2.drawFrame(0,0,128,64);// lcd is 128,64 
-     if (old_ID != 0){
+ /*    if (old_ID != 0){
                   u8g2.setCursor(2, 40);
                   u8g2.print("Code $");
                   u8g2.setCursor(2, 49);
@@ -444,14 +587,14 @@ void loop(void) {
                   DataEight=r_msg->Data[7];             
                   
                   long msgID = 0x7DF ;
-                  SendCANmessage(r_msg->ID+9, 8, 0x04, st, 0x00) ;
+                  SendCANmessage(r_msg->ID+9, 8, 0x04, 0x00, 0x00) ;
                //   u8g2.setFont(u8g2_font_5x7_tf);
                   //u8g2.print(2,6,r_msg->ID);
 
                   canBus.free();
          
         }
-    
+   */ 
   } while ( u8g2.nextPage() );
 }
 
