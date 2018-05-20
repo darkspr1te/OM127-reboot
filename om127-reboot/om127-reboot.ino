@@ -25,6 +25,11 @@ U8G2_ST7565_ERC12864_1_4W_SW_SPI  u8g2(U8G2_R0,/* clock=*/ PB0, /* data=*/ PB1, 
  int ledState = HIGH; 
 int LOG_ENABLED = 0;
 winbondFlashSPI mem;
+  
+//begin(uint8_t menu_select_pin, uint8_t menu_next_pin, uint8_t menu_prev_pin, uint8_t menu_up_pin = U8X8_PIN_NONE, uint8_t menu_down_pin = U8X8_PIN_NONE, uint8_t menu_home_pin = U8X8_PIN_NONE)
+// init LCD with Menu buttons tied in
+ // u8g2.begin(PB14,PB12, PB15, U8X8_PIN_NONE, U8X8_PIN_NONE, PB13);
+  //u8g2.begin(Menu_Button,Down_Button,Up_Button,U8X8_PIN_NONE,U8X8_PIN_NONE,Exit_Button);
 #define SPI_SLAVE_SEL_PIN    PA4
 #define Up_Button            PB15
 #define Down_Button          PB12
@@ -324,9 +329,9 @@ void setup(void) {
   }
   
   //Button Setup
-  pinMode(Down_Button, INPUT);//Down
-  pinMode(Exit_Button, INPUT);//Exit
-  pinMode(Menu_Button, INPUT);//Enter
+  pinMode(Down_Button, INPUT);//DownPB12
+  pinMode(Exit_Button, INPUT);//Exit/PB13
+  pinMode(Menu_Button, INPUT);//Enter/PB14
   pinMode(Up_Button, INPUT);//Up
   pinMode(USB_Detect, INPUT);//USB Plug detect
 
@@ -339,7 +344,8 @@ void setup(void) {
   
 //begin(uint8_t menu_select_pin, uint8_t menu_next_pin, uint8_t menu_prev_pin, uint8_t menu_up_pin = U8X8_PIN_NONE, uint8_t menu_down_pin = U8X8_PIN_NONE, uint8_t menu_home_pin = U8X8_PIN_NONE)
 // init LCD with Menu buttons tied in
-  u8g2.begin(PB14,PB15, PB12, U8X8_PIN_NONE, U8X8_PIN_NONE, PB13);
+u8g2.begin(Menu_Button,Down_Button,Up_Button,U8X8_PIN_NONE,U8X8_PIN_NONE,Exit_Button);
+  //u8g2.begin(PB14,PB12, PB15, U8X8_PIN_NONE, U8X8_PIN_NONE, PB13);
  // u8g2.begin();  
 
 
@@ -383,7 +389,7 @@ void loop(void) {
       }
       if (digitalRead(Menu_Button)!=1){
           while (digitalRead(Menu_Button)!=1){}
-                box_two();
+                box();
       }
       if (digitalRead(Down_Button)==1){
         
@@ -391,7 +397,7 @@ void loop(void) {
       if (digitalRead(Exit_Button)!=1){
           while (digitalRead(Exit_Button)!=1){}
           
-                box();
+                box_two();
       }
       
     u8g2.setFont(u8g2_font_5x7_tf);
