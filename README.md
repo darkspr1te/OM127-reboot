@@ -55,3 +55,4 @@ http://www.cnblogs.com/shangdawei/p/3627565.html
 https://github.com/hackingvolvo/SardineCAN-Arduino
 https://github.com/fenugrec/oj2534-fw
 https://github.com/NikolaKozina/j2534
+https://github.com/macchina/m2-hardware/blob/master/M2/Interface%20Board%20Schematic.pdf

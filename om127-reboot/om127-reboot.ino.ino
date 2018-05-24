@@ -27,9 +27,12 @@ typedef struct
 //HW Serial UART1 PA9/PA10
 
  const long interval = 500; 
+ const long blink_delay = 1000;
  const int ledPin =  PA8;
  unsigned long previousMillis = 0; 
+  unsigned long previousMillis_two = 0; 
  int ledState = HIGH; 
+ boolean cur_state =false;
 int LOG_ENABLED = 0;
 winbondFlashSPI mem;
   
@@ -154,6 +157,27 @@ wait_ack++;
     }
   return mbx ;
 }
+
+void Led_Blink()
+
+{
+    unsigned long currentMillis = millis();
+  if (currentMillis - previousMillis >= interval) {
+    // save the last time you blinked the LED
+    previousMillis = currentMillis;
+
+    // if the LED is off turn it on and vice-versa:
+    if (ledState == LOW) {
+      ledState = HIGH;
+    } else {
+      ledState = LOW;
+    }
+   //Serial1.print("LED");
+    // set the LED with the ledState of the variable:
+    digitalWrite(ledPin, ledState);
+  }
+
+ }
 
 // Send message
 // Prepare and send a frame containing some value 
@@ -525,7 +549,7 @@ void dump_flash()
         while(mem.busy());
         memcpy(&can_log[0],buff,256);
         mem.read(256,buff,256);
-        memcpy(&can_log[10],buff,512);
+        memcpy(&can_log[10],buff,256);
        // mem.read(0x1,buff,256);
       //  while(mem.busy());
       //  memcpy(can_log+256,buff,256);
@@ -688,7 +712,156 @@ Serial1.println("done");
   delay(500);
 }
 
+void Cursor_Blink()
 
+{
+ // cur_state
+    unsigned long currentMillis = millis();
+  if (currentMillis - previousMillis_two >= 500) {
+    // save the last time you blinked the LED
+    previousMillis_two = currentMillis;
+
+    // if the LED is off turn it on and vice-versa:
+    if (cur_state == false) {
+      cur_state = true;
+    } else {
+      cur_state = false;
+    }
+  //Blink Cursor time or not
+  //  return cur_state;
+  }
+
+ }
+void CAN_Filter_Menu()
+{
+  int  ID_Filter[4]={0,7,0xd,0xf};
+  int filter_Id=0;
+  boolean select_char=false;
+  //int Mask_Filter[0x1,0xF,0xF,0xF,0xF,0x8,0x0,0x0]
+  int Mask_Filter[8];
+  int char_select = 1;
+  int cur_row =0;
+ int b=1;
+ int pending=0;
+ int Button=0;
+  //start with just can ID filter
+  //u8g2 does not have built in fection for this so we will make one
+  //for (int i=1;i<=4;i++){ID_Filter[i]=0;}
+  //ID_Filter[2]=1;
+  //ID_Filter[4]=2;
+  
+   while ((digitalRead(Exit_Button)==1) && (digitalRead(Exit_Button)==1) )
+      {
+              u8g2.firstPage();
+              do 
+                {
+                  Cursor_Blink();
+                  u8g2.setCursor(2, 8);
+                  u8g2.print("ID_Filter");
+                  u8g2.setCursor(2,18);
+                  u8g2.print("0x");
+                  for ( b=0;b<4;b++)
+                    {
+                     if (cur_row==b)
+                     {
+                        if (cur_state)
+                        {
+                          u8g2.setFontMode(0);
+                          u8g2.setDrawColor(0);
+                          if (select_char) { u8g2.setFontMode(0);
+                          u8g2.setDrawColor(0);
+                          u8g2.print(ID_Filter[b],HEX);
+                           u8g2.setFontMode(0);
+                          u8g2.setDrawColor(1);}
+                          else
+                          {
+                            u8g2.print(ID_Filter[b],HEX);
+                            u8g2.setFontMode(0);
+                            u8g2.setDrawColor(1);
+                          }
+                          
+                        }
+                        else u8g2.print(ID_Filter[b],HEX);
+                     }
+                     else 
+                     {
+                      u8g2.setFontMode(0);
+                      u8g2.setDrawColor(1);
+                      u8g2.print(ID_Filter[b],HEX);
+                     }
+                     
+                    }
+                    u8g2.setCursor(2, 50);
+                    u8g2.print("Saved Filter ID ");
+               // 
+
+
+ 
+                    u8g2.print(filter_Id,HEX); 
+                    if (digitalRead(Exit_Button)!=1)
+                    {
+                      if ((digitalRead(Exit_Button)!=1) && (digitalRead(Menu_Button)!=1)){break;}
+                      while (digitalRead(Up_Button)!=1){delay(150);}
+                      Button = u8g2.userInterfaceMessage("Store Filter", "Press Enter To Store", "Exit To Cancel", " Ok \n Cancel ");
+                      switch (Button) {
+                                          case 0:
+                                          //Cancel chosen
+                                           break;
+                                           case 2:
+                                          //Exit chosen 
+                                           break;
+                                           default:
+                                           canBus.filter(0, filter_Id, 0,0); 
+                                           Serial1.print("Filter saved");
+                                           break;
+                                         }
+                    }
+                    if (digitalRead(Up_Button)!=1){
+                    
+                      if (select_char==1)
+                          {
+                            ID_Filter[cur_row]++;
+                            Serial1.println("incrment");
+                            if (ID_Filter[cur_row]>15)ID_Filter[cur_row]=15;
+                            
+                            while (digitalRead(Up_Button)!=1){delay(150);
+                          }
+                        }
+                        else 
+                        {cur_row++;if (cur_row==4)cur_row=3;Serial1.print("no-select");while (digitalRead(Up_Button)!=1){delay(150);}}}
+                    if (digitalRead(Down_Button)!=1){if (select_char)
+                        {ID_Filter[cur_row]--;
+                        if (ID_Filter[cur_row]<0)ID_Filter[cur_row]=0;
+                        while (digitalRead(Down_Button)!=1){delay(150);}
+                        }
+                        else                  
+                          {cur_row--;if (cur_row==-1)cur_row=0;while (digitalRead(Down_Button)!=1){delay(150);}}} 
+                    if (digitalRead(Menu_Button)!=1)
+                      {
+                       if (select_char == false)  
+                       {
+                          select_char= true;pending=true;
+                            } 
+                            else 
+                            {
+                              select_char = false;
+                            }
+                        while (digitalRead(Menu_Button)!=1){delay(150);}
+                      }
+                    if (pending==true)
+                    {
+                      filter_Id=filter_Id | (ID_Filter[0]<<12);
+                      filter_Id=filter_Id | (ID_Filter[1]<<8);
+                      filter_Id=filter_Id | (ID_Filter[2]<<4);
+                      filter_Id=filter_Id | (ID_Filter[3]);
+                      
+                      
+                      pending=false;
+                      }
+                } while ( u8g2.nextPage() );
+     }  
+  
+}
 
 void ADC_Menu()
 {
@@ -785,7 +958,7 @@ void Main_Menu()
 //  u8g2.setFont(u8g2_font_5x7_tf);
 //u8g2.setFontRefHeightAll();    /* this will add some extra space for the text inside the buttons */
 //u8g2.userInterfaceMessage("Boot STM32", "darkspr1te 2018", "USB/CAN Switch", " Ok \n Cancel ");
-Button_Key = u8g2.userInterfaceSelectionList("Darkspr1te OM127 Menu", 1, "Change CAN Speed\nChange CAN bits\nSomething else here");
+Button_Key = u8g2.userInterfaceSelectionList("Darkspr1te OM127 Menu", 1, "Change CAN Speed\nChange CAN bits\nPID Menu\nSniff Menu\nADC Menu\nDump Menu\nSettings Menu\Developer Menu");
 switch (Button_Key) {
        case 0:
       //do something when var equals 1
@@ -869,26 +1042,7 @@ Serial1.println("USB Menu Finished");
 }
 
 
-void Led_Blink()
 
-{
-    unsigned long currentMillis = millis();
-  if (currentMillis - previousMillis >= interval) {
-    // save the last time you blinked the LED
-    previousMillis = currentMillis;
-
-    // if the LED is off turn it on and vice-versa:
-    if (ledState == LOW) {
-      ledState = HIGH;
-    } else {
-      ledState = LOW;
-    }
-   //Serial1.print("LED");
-    // set the LED with the ledState of the variable:
-    digitalWrite(ledPin, ledState);
-  }
-
- }
 
 //SPI Flash Stuff
 void read_buffer(){
@@ -1049,8 +1203,9 @@ void loop(void) {
       if (digitalRead(Down_Button)!=1){
               while (digitalRead(Down_Button)!=1){}
                 //nothing right now   
-               // ADC_Menu();   
-               Tick_menu();          
+               // ADC_Menu();  
+               CAN_Filter_Menu(); 
+               //Tick_menu();          
            // Serial1.print("Down Pressed");
       }
       if (digitalRead(Exit_Button)!=1){
