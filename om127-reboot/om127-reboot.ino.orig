@@ -11,6 +11,7 @@
 #endif
 #include "winbondflash.h"
 
+//#include "EEPROMAnything.h"
 
 int incomingByte = 0;   // for incoming serial data
 // OM127 LCD Screen Type
@@ -201,6 +202,7 @@ void SendCANmessage(long id=0x001, byte dlength=8, byte d0=0x00, byte d1=0x00, b
     Serial1.print(".");
   Serial1.println(d7,HEX);
     */      
+<<<<<<< HEAD
 }
 
 
@@ -259,7 +261,175 @@ void CAN_Change()
   }
 }
 
-byte st = 0x31; // canbus reply value- soon not needed
+
+  /**** ISO 9141-2. This protocol has an asynchronous serial data rate of 10.4 kBaud. It is somewhat similar to RS-232, but that the signal levels are different, and that communications happens on a single, bidirectional line without extra handshake signals. ISO 9141-2 is primarily used in Chrysler, European, and Asian vehicles.
+   *  
+   *    pin 7: K-line
+   *    pin 15: L-line (optional)
+   *    UART signaling (though not RS-232 voltage levels)
+   *    K-line idles high 
+   *    High voltage is Vbatt
+   *    Message length is restricted to 12 bytes, including CRC
+   * 
+   *  Pinos: 5,7,15 e 16 ativos - Nesse Protocolo o pino 15 é opicional e pode não existir no veículo
+   */
+
+  /**** ISO 14230 KWP2000 (Keyword Protocol 2000)
+   *
+   *    pin 7: K-line
+   *    pin 15: L-line (optional)
+   *    Physical layer identical to ISO 9141-2
+   *    Data rate 1.2 to 10.4 kBaud
+   *    Message may contain up to 255 bytes in the data field 
+   *  
+   *  Pinos: 5,7,15 e 16 ativos - Nesse Protocolo o pino 15 é opicional e pode não existir no veículo
+   */
+   
+ /**** SAE J1850 VPW (variable pulse width - 10.4/41.6 kB/sec, standard of General Motors)
+   *
+   *    pin 2: Bus+
+   *    Bus idles low
+   *    High voltage is +7 V
+   *    Decision point is +3.5 V
+   *    Message length is restricted to 12 bytes, including CRC
+   *    Employs CSMA/NDA
+   *  
+   *  Pinos: 2,5 e 16 ativos
+   */
+   /**** SAE J1850 PWM (pulse-width modulation - 41.6 kB/sec, standard of the Ford Motor Company)
+  *    pin 2: Bus+
+   *    pin 10: Bus–
+   *    High voltage is +5 V
+   *    Message length is restricted to 12 bytes, including CRC
+   *    Employs a multi-master arbitration scheme called 'Carrier Sense Multiple Access with Non-Destructive Arbitration' (CSMA/NDA)
+   *
+   *  Pinos: 2,5,10 e 16 ativos
+   *
+#define KWP_LOW              PA15 //in order to function disable STLINK port //Sets PIN15 on OBD  High 12v
+#define KWP_TX               PA9 //ISO-9141 //Sets PIN7 on OBD  High 12v
+#define KWP_RX               PA10//ISO-9141
+
+   
+*/
+//placeholders
+
+void Init__J1850_PWM(){}
+void Init_SAE_J1850_VPW(){}
+void Init_KWP2000(){} 
+void Init_ISO9141_2(){}
+
+#define K_HIGH(time) digitalWrite(KWP_TX,HIGH);delay(time);
+#define K_LOW(time) digitalWrite(KWP_TX,LOW);delay(time);
+/*
+void K_LOW(int d_time)
+{
+  digitalWrite(KWP_TX,LOW);
+  delay(d_time);
+  digitalWrite(KWP_TX,HIGH);
+}*/
+
+
+void Init_KKL_ALT(boolean ALT_INIT)
+{
+  //baud is 10400 baud (8N1)
+ // Serial1.begin(10400);
+   afio_cfg_debug_ports(AFIO_DEBUG_NONE);//this enables PA15 for output 
+// Do some KKL functions here, right now I have nothing
+
+  if (ALT_INIT)
+  {
+        K_LOW(70); // Low for 70ms
+        K_HIGH(130); // High for 130ms
+  }
+  else
+  {
+         K_LOW(25); // Low for 25ms
+         K_HIGH(25); // High for 25ms
+  }
+
+
+   delay(1000);
+   Serial1.end();
+ //  afio_cfg_debug_ports(AFIO_DEBUG_FULL_SWJ);//enable debug / in usage you will leave debug disable for KKL to always function and switch it on via dev menu
+=======
+>>>>>>> cd1bd64bee1d3bedc91f52e930596b78f813ceee
+}
+
+boolean Init_SLOW_KKL()
+{
+  char serial;
+  K_HIGH(320); // As per ISO standard
+
+<<<<<<< HEAD
+  // Send 0x33 at 5 baud (00110011)
+  // K-line level: |_--__--__-|
+  K_LOW(200); // Low for 200ms - start bit
+  K_HIGH(400); // High for 400ms - 00
+  K_LOW(400); // Low for 400ms - 11
+  K_HIGH(400); // High for 400ms - 00
+  K_LOW(400); // Low for 400ms - 11
+  K_HIGH(200); // High for 200ms - stop bit
+  Serial1.begin(10400);
+  delay(25);
+  serial = Serial1.read();
+return 0;
+=======
+void CAN_Change()
+{
+  int Button_Key =0;
+  CAN_STATUS Stat ;
+  
+  Button_Key = u8g2.userInterfaceSelectionList("CAN Speed Options", 1, "CAN 500\nCAN 250");
+  switch (Button_Key) {
+       case 0:
+      //do something when var equals 1
+      
+       Serial1.println("Select cancel");
+      break;
+      case 2:
+      Serial1.println("can_change_250");
+      Stat = canBus.begin(CAN_SPEED_250, CAN_MODE_NORMAL);
+        if (Stat != CAN_OK){
+       Serial1.println("ERROR begin, CAN BUS Stuck");
+       Serial1.println(Stat,DEC);
+  }   
+      break;
+      case 3:
+      //do something when var equals 2
+  //    Serial1.println("option 2");
+      break;      
+      case 4:
+      //do something when var equals 2
+  //    Serial1.println("option 3");
+      break;  
+      case 5:
+      //do something when var equals 2
+  //    Serial1.println("option 4");
+      break;  
+      case 6:
+      //do something when var equals 2
+  //    Serial1.println("option 5");
+      break;  
+      case 7:
+      //do something when var equals 2
+   //   Serial1.println("option 6");
+      break;  
+      default:
+      
+      
+      // if nothing else matches, do the default
+      // default is optional
+      Serial1.println("can_change_500");
+      Stat = canBus.begin(CAN_SPEED_500, CAN_MODE_NORMAL);
+        if (Stat != CAN_OK){
+       Serial1.println("ERROR begin, CAN BUS Stuck");
+       Serial1.println(Stat,DEC);
+  }
+      break;
+  }
+>>>>>>> cd1bd64bee1d3bedc91f52e930596b78f813ceee
+}
+
 
   /**** ISO 9141-2. This protocol has an asynchronous serial data rate of 10.4 kBaud. It is somewhat similar to RS-232, but that the signal levels are different, and that communications happens on a single, bidirectional line without extra handshake signals. ISO 9141-2 is primarily used in Chrysler, European, and Asian vehicles.
    *  
@@ -583,6 +753,219 @@ Serial1.println("done");
     uint8_t buff[sizeof(can_log)*MAX_LOG];
      memset(buff,0,sizeof(can_log)*MAX_LOG);
 
+<<<<<<< HEAD
+void SNIFF_Menu()
+{
+    CanMsg* local_msg = new CanMsg[6] ;
+   int LCD_ROW = 0;
+   int MAX_ROW = 6;
+   int ACTUAL_ROW = 0;
+   int LOOPING_NOW =0 ;
+  u8g2.setFont(u8g2_font_5x7_tf);
+//  u8g2.setFont(u8g2_font_6x10_tf);
+        while (digitalRead(Exit_Button)==1)
+        {
+           u8g2.firstPage();
+              do 
+                {
+                  u8g2.setCursor(2, 8);
+                  u8g2.print("-----+CAN Sniffer+-----");
+               //   for(int i = 0;i < len; i++)
+                  
+                  
+                  if ((r_msg = canBus.recv()) != NULL)
+                  {
+                      local_msg[ACTUAL_ROW].ID = r_msg->ID;
+                      for(int i = 0;i < 7; i++)
+                        local_msg[ACTUAL_ROW].Data[i] = r_msg->Data[i];
+                      
+                      old_ID=r_msg->ID;
+                      DataOne=r_msg->Data[0];             
+                      DataTwo=r_msg->Data[1];             
+                      DataThree=r_msg->Data[2];             
+                      DataFour=r_msg->Data[3];             
+                      DataFive=r_msg->Data[4];             
+                      DataSix=r_msg->Data[5];             
+                      DataSeven=r_msg->Data[6];             
+                      DataEight=r_msg->Data[7];             
+                  
+                      long msgID = 0x7DF ;
+                      SendCANmessage(r_msg->ID+9, 8, 0x04, 0x02, 0x02) ;
+               //   u8g2.setFont(u8g2_font_5x7_tf);
+                  //u8g2.print(2,6,r_msg->ID);
+                      if (ACTUAL_ROW>MAX_ROW)
+                      { 
+                        ACTUAL_ROW=1;
+                        LOOPING_NOW=1;
+                      }
+                        else
+                          ACTUAL_ROW++;
+                        canBus.free();
+         
+                  }
+                  if (old_ID != 0)
+                    {
+                //      u8g2.setCursor(2, 16);
+               //       u8g2.print("Code $");
+               if (LOOPING_NOW ==1)
+               {
+                 for(int i = 0;i < MAX_ROW+1
+                 ; i++)
+                    {
+                      u8g2.setCursor(2,((i*8))+16);
+                      u8g2.print("[");
+                      u8g2.print(local_msg[i].ID,HEX);
+                      u8g2.print("]");
+                      for(int b = 0;b < 7; b++)
+                      {
+                          u8g2.print(local_msg[i].Data[b],HEX);
+                          u8g2.print(".");
+                      }
+
+                    }
+               }
+               else
+                    for(int i = 0;i < ACTUAL_ROW; i++)
+                    {
+                      u8g2.setCursor(2,((i*8))+16);
+                      u8g2.print("[");
+                      u8g2.print(local_msg[i].ID,HEX);
+                      u8g2.print("]");
+                      for(int b = 0;b < 7; b++)
+                      {
+                        u8g2.print(local_msg[i].Data[b],HEX);
+                        u8g2.print(".");
+                      }
+                      
+                    }
+                 }
+                  
+            }while ( u8g2.nextPage() );
+                
+        } 
+}
+void Dump_menu()
+{
+  /*
+   *      Serial1.print(F("Read "));
+        int addr = 0x0
+        int len = sizeof(can_log)*MAX_LOG;
+        
+        uint8_t buff[sizeof(can_log)*MAX_LOG];
+         memset(buff,0,sizeof(can_log)*MAX_LOG);
+         
+        Serial1.print(F("addr=0x"));
+        Serial1.print(addr>>8,HEX);
+        Serial1.print(addr,HEX);
+        Serial1.print(F(",len=0x"));
+        Serial1.print(len>>8,HEX);
+        Serial1.print(len,HEX);
+        Serial1.println(F(":"));
+        uint8_t *buf = new uint8_t[len];
+        while(mem.busy());
+        mem.read(addr,buf,len);
+        memcpy(can_log,buff,(sizeof(can_log)*MAX_LOG));
+        for(int i = 0;i < len; i++)
+        {
+          Serial1.print("[");
+          Serial1.print(can_log[i].stamp_sr,DEC);
+          Serial1.print("]");
+          Serial1.print(can_log[i].Data_sr.ID,HEX);
+           for(int c = 0;c < 7; c++)
+           {
+              Serial1.print(":");
+              Serial1.print(can_log[i].Data_sr.Data[c],HEX);
+           }
+           Serial1.println();
+        }
+        Serial1.println();
+        Serial1.println(F("OK"));
+        delete [] buf;
+   */
+}
+/*
+ * u8g2.print("[");
+                      u8g2.print(local_msg[i].ID,HEX);
+                      u8g2.print("]");
+                      for(int b = 0;b < 7; b++)
+                      {
+                          u8g2.print(local_msg[i].Data[b],HEX);
+                          u8g2.print(".");
+                      }
+ */
+void dump_flash()
+{
+      int ACTUAL_ROW = 0;
+      record_type* can_log = new record_type[30];
+        uint8_t buff[256];
+         memset(buff,0,256);
+        
+        
+        while(mem.busy());
+        mem.read(0,buff,256);
+        while(mem.busy());
+        memcpy(&can_log[0],buff,256);
+        mem.read(256,buff,256);
+        memcpy(&can_log[10],buff,512);
+       // mem.read(0x1,buff,256);
+      //  while(mem.busy());
+      //  memcpy(can_log+256,buff,256);
+        for(int i = 0;i < 15; i++)
+        {
+          Serial1.print("[");
+          Serial1.print(can_log[i].Data_sr.ID,HEX);
+          Serial1.print("]");
+          for(int b = 0;b < 7; b++)
+          Serial1.print(can_log[i].Data_sr.Data[b],HEX);
+          Serial1.println();
+        }
+}
+
+void Tick_menu()//This is a ghetto time stamp solution, we only need to know what order the pid's come in, not really 'exatcly when' yet, maybe next feature
+{
+  int stamp;
+  String time_stamp;
+  String time_stamp_cut;
+  int done = 0;
+  int MAX_LOG = 20;
+  String files = "trypetxt";
+#define FILENAME_STRING_SIZE      13
+ char filename[FILENAME_STRING_SIZE];
+  record_type* can_log = new record_type[30];
+  int MAX_ROW = 6;
+  int addr =0;
+  int ACTUAL_ROW = 0;
+
+/*  typedef struct
+ {
+     int stamp_sr;
+     CanMsg Data_sr ;
+     
+ }  record_type;
+*/
+Serial1.println("erasing blocks");
+mem.WE();
+//mem.eraseAll();
+//mem.erase64kBlock(0);
+long ss = millis();
+long pp = millis();
+while(mem.busy())
+ {
+          Serial1.println(millis()-ss);
+          delay(1000);
+        }
+        mem.erase64kBlock(1);
+         {
+          Serial1.println(millis()-ss);
+          delay(1000);
+        }
+Serial1.println("done");
+  u8g2.firstPage();
+    uint8_t buff[sizeof(can_log)*MAX_LOG];
+     memset(buff,0,sizeof(can_log)*MAX_LOG);
+
+=======
+>>>>>>> cd1bd64bee1d3bedc91f52e930596b78f813ceee
      
   while (digitalRead(Exit_Button)==1)
     //while ((ACTUAL_ROW < MAX_LOG+2) ||(digitalRead(Exit_Button)!=1)||(done!=1))
@@ -794,6 +1177,7 @@ switch (Button_Key) {
       case 2:
       //do something when var equals 2
       Serial1.println("option 1");
+
       break;
       case 3:
       //do something when var equals 2
@@ -909,6 +1293,8 @@ void read_buffer(){
           Serial1.print((char)buf[i]);
         } 
 }
+
+
 void setup(void) {
 
 /* SET PA8 output for LED 
@@ -931,14 +1317,22 @@ Serial1.println();
   Serial1.println("Serial1 OK Ready");//test , in usage UART1 wont be available
  //SPI Setup -currently causes a bug, i think it's erasing the system eeprom 
  
+<<<<<<< HEAD
+  
+=======
 
+>>>>>>> cd1bd64bee1d3bedc91f52e930596b78f813ceee
   //Button Setup
   pinMode(Down_Button, INPUT);//DownPB12
   pinMode(Exit_Button, INPUT);//Exit/PB13
   pinMode(Menu_Button, INPUT);//Enter/PB14
   pinMode(Up_Button, INPUT);//Up
   pinMode(USB_Detect, INPUT);//USB Plug detect
+<<<<<<< HEAD
+  
+=======
 
+>>>>>>> cd1bd64bee1d3bedc91f52e930596b78f813ceee
 // testing ADC
 pinMode(PA0, INPUT_ANALOG);
 pinMode(PC1, INPUT_ANALOG);
