@@ -11,11 +11,19 @@
 #endif
 #include "winbondflash.h"
 
+//#include "EEPROMAnything.h"
 
 int incomingByte = 0;   // for incoming serial data
 // OM127 LCD Screen Type
 U8G2_ST7565_ERC12864_1_4W_SW_SPI  u8g2(U8G2_R0,/* clock=*/ PB0, /* data=*/ PB1, /* cs=*/ PB10, /* dc=*/ PB8, /* reset=*/PC13);
 
+
+typedef struct
+ {
+     int stamp_sr;
+     CanMsg Data_sr ;
+     
+ }  record_type;
 
 //HW Serial UART1 PA9/PA10
 
@@ -36,14 +44,16 @@ winbondFlashSPI mem;
 #define Exit_Button          PB13
 #define Menu_Button          PB14
 #define USB_Detect           PC15 //usefull to enable STLINK via IRQ-Menu
+
 #define LED_CAN_MUTE         PA8
 #define CAN_MUTE             PA13 //in order to function disable STLINK port
+
 #define KWP_LOW              PA15 //in order to function disable STLINK port //Sets PIN15 on OBD  High 12v
 #define KWP_TX               PA9 //ISO-9141 //Sets PIN7 on OBD  High 12v
 #define KWP_RX               PA10//ISO-9141
 
-#define J1850_ONE            PA0 //Q13 Emmiter of PNP AND Q11- Base NPN
-#define J1850_TWO            PA1 //Comp1 output
+#define J1850_ONE            PA0 //Q13 Emmiter of PNP AND Q11- Base NPN - input maybe?
+#define J1850_TWO            PA1 //Comp1 output - def input 
 #define J1850_THREE          PA2 //Q8 Base NPN  On to Q9 Base PNP onto //Sets PIN 10 OBD High 5V
 #define J1850_FOUR           PA3//Q6  // Creates 5v Differential On PIN2/10 On obd
 
@@ -98,7 +108,7 @@ void CANSetup(void)
 
   Stat = canBus.begin(CAN_SPEED_500, CAN_MODE_NORMAL);    // Other speeds go from 125 kbps to 1000 kbps. CAN allows even more choices.
   if (Stat != CAN_OK){
-       u8g2.print("ERROR begin, CAN BUS Stuck -");
+       u8g2.print("ERROR CAN BUS Stuck");
        u8g2.print(Stat,DEC);
   }
   //filter(uint8 idx, uint32 id, uint32 mask, uint32 extID)
@@ -111,7 +121,7 @@ void CANSetup(void)
   Stat = canBus.status();
   if (Stat != CAN_OK)
   {
-       u8g2.print("ERROR enabling CAN system -");
+       u8g2.print("ERROR CAN system -");
        u8g2.print(Stat,DEC);
   }
   else
@@ -141,7 +151,7 @@ wait_ack++;
     if (wait_ack == CAN_INAK_TimeOut) 
     {
     Serial1.println("send fail");
-    CANSetup() ;
+   // CANSetup() ;
     
     }
   return mbx ;
@@ -174,6 +184,7 @@ void SendCANmessage(long id=0x001, byte dlength=8, byte d0=0x00, byte d1=0x00, b
  // digitalWrite(LED_CAN_MUTE, HIGH);   // turn the LED off 
  // delay(100);  
   //Serial1.println("endsend");
+  /*
   Serial1.print(id,HEX);
     Serial1.print("#");
   Serial1.print(d0,HEX);
@@ -191,7 +202,7 @@ void SendCANmessage(long id=0x001, byte dlength=8, byte d0=0x00, byte d1=0x00, b
   Serial1.print(d6,HEX);
     Serial1.print(".");
   Serial1.println(d7,HEX);
-          
+    */      
 }
 
 
@@ -399,7 +410,7 @@ void SNIFF_Menu()
                       DataEight=r_msg->Data[7];             
                   
                       long msgID = 0x7DF ;
-                      SendCANmessage(r_msg->ID+9, 8, 0x04, 0x00, 0x00) ;
+                      SendCANmessage(r_msg->ID+9, 8, 0x04, 0x02, 0x02) ;
                //   u8g2.setFont(u8g2_font_5x7_tf);
                   //u8g2.print(2,6,r_msg->ID);
                       if (ACTUAL_ROW>MAX_ROW)
@@ -453,6 +464,231 @@ void SNIFF_Menu()
                 
         } 
 }
+void Dump_menu()
+{
+  /*
+   *      Serial1.print(F("Read "));
+        int addr = 0x0
+        int len = sizeof(can_log)*MAX_LOG;
+        
+        uint8_t buff[sizeof(can_log)*MAX_LOG];
+         memset(buff,0,sizeof(can_log)*MAX_LOG);
+         
+        Serial1.print(F("addr=0x"));
+        Serial1.print(addr>>8,HEX);
+        Serial1.print(addr,HEX);
+        Serial1.print(F(",len=0x"));
+        Serial1.print(len>>8,HEX);
+        Serial1.print(len,HEX);
+        Serial1.println(F(":"));
+        uint8_t *buf = new uint8_t[len];
+        while(mem.busy());
+        mem.read(addr,buf,len);
+        memcpy(can_log,buff,(sizeof(can_log)*MAX_LOG));
+        for(int i = 0;i < len; i++)
+        {
+          Serial1.print("[");
+          Serial1.print(can_log[i].stamp_sr,DEC);
+          Serial1.print("]");
+          Serial1.print(can_log[i].Data_sr.ID,HEX);
+           for(int c = 0;c < 7; c++)
+           {
+              Serial1.print(":");
+              Serial1.print(can_log[i].Data_sr.Data[c],HEX);
+           }
+           Serial1.println();
+        }
+        Serial1.println();
+        Serial1.println(F("OK"));
+        delete [] buf;
+   */
+}
+/*
+ * u8g2.print("[");
+                      u8g2.print(local_msg[i].ID,HEX);
+                      u8g2.print("]");
+                      for(int b = 0;b < 7; b++)
+                      {
+                          u8g2.print(local_msg[i].Data[b],HEX);
+                          u8g2.print(".");
+                      }
+ */
+void dump_flash()
+{
+      int ACTUAL_ROW = 0;
+      record_type* can_log = new record_type[30];
+        uint8_t buff[256];
+         memset(buff,0,256);
+        
+        
+        while(mem.busy());
+        mem.read(0,buff,256);
+        while(mem.busy());
+        memcpy(&can_log[0],buff,256);
+        mem.read(256,buff,256);
+        memcpy(&can_log[10],buff,512);
+       // mem.read(0x1,buff,256);
+      //  while(mem.busy());
+      //  memcpy(can_log+256,buff,256);
+        for(int i = 0;i < 15; i++)
+        {
+          Serial1.print("[");
+          Serial1.print(can_log[i].Data_sr.ID,HEX);
+          Serial1.print("]");
+          for(int b = 0;b < 7; b++)
+          Serial1.print(can_log[i].Data_sr.Data[b],HEX);
+          Serial1.println();
+        }
+}
+
+void Tick_menu()//This is a ghetto time stamp solution, we only need to know what order the pid's come in, not really 'exatcly when' yet, maybe next feature
+{
+  int stamp;
+  String time_stamp;
+  String time_stamp_cut;
+  int done = 0;
+  int MAX_LOG = 20;
+  String files = "trypetxt";
+#define FILENAME_STRING_SIZE      13
+ char filename[FILENAME_STRING_SIZE];
+  record_type* can_log = new record_type[30];
+  int MAX_ROW = 6;
+  int addr =0;
+  int ACTUAL_ROW = 0;
+
+/*  typedef struct
+ {
+     int stamp_sr;
+     CanMsg Data_sr ;
+     
+ }  record_type;
+*/
+Serial1.println("erasing blocks");
+mem.WE();
+//mem.eraseAll();
+//mem.erase64kBlock(0);
+long ss = millis();
+long pp = millis();
+while(mem.busy())
+ {
+          Serial1.println(millis()-ss);
+          delay(1000);
+        }
+        mem.erase64kBlock(1);
+         {
+          Serial1.println(millis()-ss);
+          delay(1000);
+        }
+Serial1.println("done");
+  u8g2.firstPage();
+    uint8_t buff[sizeof(can_log)*MAX_LOG];
+     memset(buff,0,sizeof(can_log)*MAX_LOG);
+
+     
+  while (digitalRead(Exit_Button)==1)
+    //while ((ACTUAL_ROW < MAX_LOG+2) ||(digitalRead(Exit_Button)!=1)||(done!=1))
+  {
+    if (done==1) return;
+    u8g2.firstPage();
+  
+              do 
+                {
+                  u8g2.setCursor(2, 8);
+                 
+                  u8g2.print(" Ticks ");
+                  stamp = micros();
+                  time_stamp= String(stamp);
+                  time_stamp_cut= time_stamp.substring(0, 3);
+                    if ((r_msg = canBus.recv()) != NULL)
+                  {
+                    long msgID = 0x7DF ;
+                      SendCANmessage(r_msg->ID+9, 8, 0x04, 0xde,0xad, 0xbe,0xef) ;
+                       
+                      // can_log[ACTUAL_ROW].stamp_sr = time_stamp_cut.toInt();
+                     // for(int i = 0;i < 3; i++)
+                      //can_log[ACTUAL_ROW].stamp_sr[i] = time_stamp.toCharArray(0, 3);
+                    //  time_stamp_cut.toCharArray(can_log[ACTUAL_ROW].stamp_sr, 4);
+                    
+                       can_log[ACTUAL_ROW].stamp_sr=ACTUAL_ROW;
+              
+                      can_log[ACTUAL_ROW].Data_sr.ID = r_msg->ID;
+                      for(int i = 0;i < 7; i++)
+                       can_log[ACTUAL_ROW].Data_sr.Data[i] = r_msg->Data[i];
+                       Serial1.print((millis()-pp));
+                       Serial1.print("[");
+                       Serial1.print(can_log[ACTUAL_ROW].Data_sr.ID,HEX);
+                       Serial1.print("]");
+                       for(int p=0;p <7;p++)
+                       {
+                            Serial1.print(can_log[ACTUAL_ROW].Data_sr.Data[p],HEX);
+                            Serial1.print(":");
+                       }
+                       Serial1.println();
+                       canBus.free();
+                       ACTUAL_ROW++;
+                  }
+
+
+                  //stamp = stamp / 10000;
+                  u8g2.print(time_stamp_cut);
+                //  Serial1.print(" ");
+                 // Serial1.print(time_stamp_cut);
+                  
+                  
+
+                
+                if ((ACTUAL_ROW > MAX_LOG)|(digitalRead(Up_Button)!=1))
+                    {
+                    ACTUAL_ROW=0;
+                     
+                    u8g2.setCursor(2, 20);
+                    Serial1.println("flash write start");
+                     while(mem.busy());
+                     mem.WE();
+                    uint8_t buf[256];
+                    memset(buf,0,256);
+                    memcpy(buf,can_log,256);
+                    mem.writePage(0x0,buf);
+                   // memcpy(buf,&can_log[256],256);
+                    mem.writePage(256,buf);
+
+                    //mem.writebyte(0x0,buf,256);
+                    // mem.writePage(addr,buf);
+                    ss = millis();
+                    while(mem.busy())
+                          {
+                              Serial1.println(millis()-ss);
+                              delay(1000);
+                            }
+            
+                   ss = millis();
+                   Serial1.println("Page two");
+                   mem.writePage(addr+256,buf);
+                    while(mem.busy())
+                          {
+                              Serial1.println(millis()-ss);
+                              delay(1000);
+                            }
+        Serial1.println();
+                      for(int i = 1;i < 256; i++)
+                        {
+                        Serial1.print("-");
+                        Serial1.print(buf[i],DEC);
+                        }
+                    Serial1.println("finish");
+
+                    done=1;
+                   // return;
+                    
+                    }
+                 
+                }while ( u8g2.nextPage() );
+                if (done==1) return;
+  }
+   //while ((done !0=) | (digitalRead(Exit_Button)!=1)){}
+  delay(500);
+}
+
 
 
 void ADC_Menu()
@@ -550,7 +786,7 @@ void Main_Menu()
 //  u8g2.setFont(u8g2_font_5x7_tf);
 //u8g2.setFontRefHeightAll();    /* this will add some extra space for the text inside the buttons */
 //u8g2.userInterfaceMessage("Boot STM32", "darkspr1te 2018", "USB/CAN Switch", " Ok \n Cancel ");
-Button_Key = u8g2.userInterfaceSelectionList("Darkspr1te OM127 Menu", 1, "Change CAN Speed\nChange CAN bits\nChange PID Value\nSniffer Menu\nADC Menu\nLogging Options\nSettings\nDeveloper Mode");
+Button_Key = u8g2.userInterfaceSelectionList("Darkspr1te OM127 Menu", 1, "Change CAN Speed\nChange CAN bits\nSomething else here");
 switch (Button_Key) {
        case 0:
       //do something when var equals 1
@@ -587,7 +823,7 @@ switch (Button_Key) {
       break; 
       case 6:     
   //    Serial1.println("Logging Options");      
-      ADC_Menu();
+      Tick_menu();
       break;
       case 7:
    //   Serial1.println("Settings");      
@@ -691,6 +927,8 @@ void setup(void) {
 
  */
    Serial1.begin(115200);//test , in usage UART1 wont be available
+
+Serial1.println();
    Serial1.println("-------------------");
    Serial1.println("");
    Serial1.println("");
@@ -724,44 +962,59 @@ pinMode(PC5, INPUT_ANALOG);
   u8g2.begin(Menu_Button,Down_Button,Up_Button,U8X8_PIN_NONE,U8X8_PIN_NONE,Exit_Button);
   u8g2.setContrast(0);//in usage remove delay from setup procedure, current shows lcd is working by going black,clear then text.maybe turn into boot routine. maybe add a logo
   u8g2.setCursor(2, 7);
-  u8g2.firstPage();
-  do{
-    u8g2.setFont(u8g2_font_5x7_tf);
-  SPI.begin();
+    SPI.begin();
   SPI.setBitOrder(MSBFIRST);
   SPI.setClockDivider(SPI_CLOCK_DIV16);
-  SPI.setDataMode(SPI_MODE0);
-  u8g2.setCursor(2, 15);
-    if(mem.begin(_W25Q64,SPI,SPI_SLAVE_SEL_PIN)){
-    //  LOG_ENABLED = 1;
-      u8g2.print("Flash OK, Logging allowed");
-    }
-  else
-  {
-    u8g2.print("Flash init FAILED, cannot log data");
-   // LOG_ENABLED = 0;
-    while(1);
-  }
-  u8g2.setCursor(2, 22);
-  CANSetup() ; 
+ SPI.setDataMode(SPI_MODE0);
+Serial1.println("testing 4");
+  u8g2.firstPage();
+  do{
+          u8g2.setFont(u8g2_font_5x7_tf);
+          u8g2.setCursor(2, 15);
+          if(mem.begin(_W25Q64,SPI,SPI_SLAVE_SEL_PIN))
+          {
+              LOG_ENABLED = 1;
+              u8g2.print("Flash OK, Logging allowed");
+          }
+           else
+          {
+          u8g2.print("Flash init FAILED, cannot log data");
+          LOG_ENABLED = 0;
+   
+          }
+
+          u8g2.setCursor(2, 22);
+
+          CANSetup(); 
+
   
 //Debug data, print clock speed to confirm CAN bitrates
-      u8g2.setCursor(2, 30);
-    u8g2.print("CPU Speed MHZ ");
-    u8g2.print(F_CPU/1000000);
-    u8g2.setCursor(2, 38);
-    u8g2.print("PCLK1 speed MHZ ");
-    u8g2.print(PCLK1/1000000); 
-    u8g2.setCursor(2, 45);
-    u8g2.print("PCLK2 speed MHZ ");
-    u8g2.println(PCLK1/1000000); 
-    u8g2.setCursor(10, 52);
-    u8g2.print("PRESS ENTER TO CONTINUE");
+          u8g2.setCursor(2, 30);
+          u8g2.print("CPU Speed MHZ ");
+          u8g2.print(F_CPU/1000000);
+          u8g2.setCursor(2, 38);
+          u8g2.print("PCLK1 speed MHZ ");
+          u8g2.print(PCLK1/1000000); 
+          u8g2.setCursor(2, 45);
+          u8g2.print("PCLK2 speed MHZ ");
+          u8g2.println(PCLK1/1000000); 
+          u8g2.setCursor(10, 52);
+   
+          u8g2.print("PRESS ENTER TO CONTINUE");
     } while ( u8g2.nextPage() );
+      if (digitalRead(Exit_Button)!=1)
+  {
+     Serial1.println("erasing flash");
+     mem.WE();
+    mem.eraseAll();
+    while(mem.busy());
+    Serial1.println("done");
+  }
+  dump_flash();
     while (digitalRead(Menu_Button)==1){}
   delay(500);
   while (digitalRead(Menu_Button)!=1){}
-  afio_cfg_debug_ports(AFIO_DEBUG_NONE);//this enables PA15/PA13 for output- looses stlink
+ // afio_cfg_debug_ports(AFIO_DEBUG_NONE);//this enables PA15/PA13 for output- looses stlink
    pinMode(CAN_MUTE, OUTPUT);
   digitalWrite(CAN_MUTE,LOW);
      pinMode(KWP_LOW , OUTPUT);
@@ -788,7 +1041,8 @@ void loop(void) {
       if (digitalRead(Up_Button)!=1){
             while (digitalRead(Up_Button)!=1){}
                 //nothing right now
-                SNIFF_Menu();
+                //SNIFF_Menu();
+                 dump_flash();
             //Serial1.print("Up Pressed");
         
       }
@@ -799,7 +1053,8 @@ void loop(void) {
       if (digitalRead(Down_Button)!=1){
               while (digitalRead(Down_Button)!=1){}
                 //nothing right now   
-                ADC_Menu();             
+               // ADC_Menu();   
+               Tick_menu();          
            // Serial1.print("Down Pressed");
       }
       if (digitalRead(Exit_Button)!=1){
