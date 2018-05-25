@@ -34,6 +34,8 @@ typedef struct
  int ledState = HIGH; 
  boolean cur_state =false;
 int LOG_ENABLED = 0;
+boolean select_char=false;
+
 winbondFlashSPI mem;
   
 //begin(uint8_t menu_select_pin, uint8_t menu_next_pin, uint8_t menu_prev_pin, uint8_t menu_up_pin = U8X8_PIN_NONE, uint8_t menu_down_pin = U8X8_PIN_NONE, uint8_t menu_home_pin = U8X8_PIN_NONE)
@@ -716,8 +718,10 @@ void Cursor_Blink()
 
 {
  // cur_state
+ int speed_blink = 500;
     unsigned long currentMillis = millis();
-  if (currentMillis - previousMillis_two >= 500) {
+    if (select_char)speed_blink=speed_blink/2;
+  if (currentMillis - previousMillis_two >= speed_blink) {
     // save the last time you blinked the LED
     previousMillis_two = currentMillis;
 
@@ -732,24 +736,67 @@ void Cursor_Blink()
   }
 
  }
-void CAN_Filter_Menu()
+void CAN_Filter_Menu(String value_text,int array_size,uint32_t seed_value)
 {
-  int  ID_Filter[4]={0,7,0xd,0xf};
+  int  ID_Filter[4]={0,0,0,0};
   int filter_Id=0;
-  boolean select_char=false;
+  
   //int Mask_Filter[0x1,0xF,0xF,0xF,0xF,0x8,0x0,0x0]
   int Mask_Filter[8];
-  int char_select = 1;
+//  int char_select = 1;
   int cur_row =0;
  int b=1;
  int pending=0;
  int Button=0;
+ int max_digits=4;
+ String Filter_Name=value_text;
+//seed_value =0x1234;
+String value_split = String(seed_value,HEX);
+ /*filll ID_Filter with initial seed, we will reuse the shiftin code
+ filter_Id=filter_Id | (ID_Filter[0]<<12);
+filter_Id=filter_Id | (ID_Filter[1]<<8);
+ filter_Id=filter_Id | (ID_Filter[2]<<4);
+filter_Id=filter_Id | (ID_Filter[3]);
+ */
+ char * pEnd;
+ filter_Id=seed_value;
+ if (value_split.length()==3)value_split="0"+value_split;
+ if (value_split.length()==2)value_split="00"+value_split;
+ if (value_split.length()==1)value_split="000"+value_split;
+ if (value_split.length()==0);
+Serial1.println(strtol(&value_split[2], &pEnd, 16));
+Serial1.println(value_split[1]);
+Serial1.println(value_split[0]);
+Serial1.println(String(value_split.length()));
+
+
+  ID_Filter[3]=strtol(&value_split[3], &pEnd, 16);
+  ID_Filter[2]=(strtol(&value_split[2], &pEnd, 16));
+  ID_Filter[2]=ID_Filter[2]>>4;
+  ID_Filter[1]=(strtol(&value_split[1], &pEnd, 16));
+  ID_Filter[1]=ID_Filter[1]>>8;
+  ID_Filter[0]=(strtol(&value_split[0], &pEnd, 16));
+  ID_Filter[0]=ID_Filter[0]>>12;
+
+ 
+   //ID_Filter[4]=strtol(&value_split[4],&pEnd ,16);
+  // ID_Filter[1]=strtol(&value_split[1], &pEnd, 16);
+   // ID_Filter[0]=strtol(&value_split[0], &pEnd, 16);
+ // ID_Filter[0]=int(value_split[0]) %20;
+ //ID_Filter[3]=seed_value % 10;
+ //ID_Filter[3]=(seed_value 10) % 10;
+ //ID_Filter[2]<< ((seed_value>>4) % 10);
+ //ID_Filter[1]<<(seed_value>>8) % 10;
+ //ID_Filter[0]=(seed_value>>12) % 10;
+
+ 
+ //ID_Filter[1]=ID_Filter[1] | (seed_value>>8);
+ //ID_Filter[2]=ID_Filter[2] | (seed_value>>8);
+// ID_Filter[3]=ID_Filter[3] | (seed_value);
   //start with just can ID filter
-  //u8g2 does not have built in fection for this so we will make one
-  //for (int i=1;i<=4;i++){ID_Filter[i]=0;}
-  //ID_Filter[2]=1;
-  //ID_Filter[4]=2;
-  
+  //u8g2 does not have built in function for this so we will make one
+ //now that we have a working function, we should swap hard coded numbers for passed variables, that way we can resuse this code
+   
    while ((digitalRead(Exit_Button)==1) && (digitalRead(Exit_Button)==1) )
       {
               u8g2.firstPage();
@@ -757,10 +804,10 @@ void CAN_Filter_Menu()
                 {
                   Cursor_Blink();
                   u8g2.setCursor(2, 8);
-                  u8g2.print("ID_Filter");
+                  u8g2.print(Filter_Name);
                   u8g2.setCursor(2,18);
                   u8g2.print("0x");
-                  for ( b=0;b<4;b++)
+                  for ( b=0;b<max_digits;b++)
                     {
                      if (cur_row==b)
                      {
@@ -769,10 +816,10 @@ void CAN_Filter_Menu()
                           u8g2.setFontMode(0);
                           u8g2.setDrawColor(0);
                           if (select_char) { u8g2.setFontMode(0);
-                          u8g2.setDrawColor(0);
-                          u8g2.print(ID_Filter[b],HEX);
-                           u8g2.setFontMode(0);
-                          u8g2.setDrawColor(1);}
+                                            u8g2.setDrawColor(0);
+                                            u8g2.print(ID_Filter[b],HEX);
+                                          u8g2.setFontMode(0);
+                                         u8g2.setDrawColor(1);}
                           else
                           {
                             u8g2.print(ID_Filter[b],HEX);
@@ -800,9 +847,11 @@ void CAN_Filter_Menu()
                     u8g2.print(filter_Id,HEX); 
                     if (digitalRead(Exit_Button)!=1)
                     {
+                       while (digitalRead(Exit_Button)!=1){delay(250);}
                       if ((digitalRead(Exit_Button)!=1) && (digitalRead(Menu_Button)!=1)){break;}
-                      while (digitalRead(Up_Button)!=1){delay(150);}
-                      Button = u8g2.userInterfaceMessage("Store Filter", "Press Enter To Store", "Exit To Cancel", " Ok \n Cancel ");
+                     
+                      Button = u8g2.userInterfaceMessage("Store Filter", "Press Ent To Store", "Exit To Cancel", " Ok \n Cancel ");
+                      delay(150);
                       switch (Button) {
                                           case 0:
                                           //Cancel chosen
@@ -811,9 +860,13 @@ void CAN_Filter_Menu()
                                           //Exit chosen 
                                            break;
                                            default:
-                                           canBus.filter(0, filter_Id, 0,0); 
-                                           Serial1.print("Filter saved");
-                                           break;
+                                                filter_Id=filter_Id | (ID_Filter[0]<<12);
+                                                filter_Id=filter_Id | (ID_Filter[1]<<8);
+                                                filter_Id=filter_Id | (ID_Filter[2]<<4);
+                                                filter_Id=filter_Id | (ID_Filter[3]);
+                                                canBus.filter(0, filter_Id, 0,0); 
+                                               Serial1.print("Filter saved");
+                                               break;
                                          }
                     }
                     if (digitalRead(Up_Button)!=1){
@@ -828,7 +881,8 @@ void CAN_Filter_Menu()
                           }
                         }
                         else 
-                        {cur_row++;if (cur_row==4)cur_row=3;Serial1.print("no-select");while (digitalRead(Up_Button)!=1){delay(150);}}}
+                        {cur_row++;if (cur_row==max_digits)cur_row=max_digits-1;while (digitalRead(Up_Button)!=1){delay(150);}}}
+                        
                     if (digitalRead(Down_Button)!=1){if (select_char)
                         {ID_Filter[cur_row]--;
                         if (ID_Filter[cur_row]<0)ID_Filter[cur_row]=0;
@@ -836,6 +890,7 @@ void CAN_Filter_Menu()
                         }
                         else                  
                           {cur_row--;if (cur_row==-1)cur_row=0;while (digitalRead(Down_Button)!=1){delay(150);}}} 
+                          
                     if (digitalRead(Menu_Button)!=1)
                       {
                        if (select_char == false)  
@@ -848,16 +903,7 @@ void CAN_Filter_Menu()
                             }
                         while (digitalRead(Menu_Button)!=1){delay(150);}
                       }
-                    if (pending==true)
-                    {
-                      filter_Id=filter_Id | (ID_Filter[0]<<12);
-                      filter_Id=filter_Id | (ID_Filter[1]<<8);
-                      filter_Id=filter_Id | (ID_Filter[2]<<4);
-                      filter_Id=filter_Id | (ID_Filter[3]);
-                      
-                      
-                      pending=false;
-                      }
+                   
                 } while ( u8g2.nextPage() );
      }  
   
@@ -1204,7 +1250,7 @@ void loop(void) {
               while (digitalRead(Down_Button)!=1){}
                 //nothing right now   
                // ADC_Menu();  
-               CAN_Filter_Menu(); 
+               CAN_Filter_Menu("ID_Filter",4,0xff00); 
                //Tick_menu();          
            // Serial1.print("Down Pressed");
       }
