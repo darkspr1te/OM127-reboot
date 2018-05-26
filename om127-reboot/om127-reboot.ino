@@ -417,9 +417,14 @@ void SNIFF_Menu()
               do 
                 {
                   u8g2.setCursor(2, 8);
+                  if (saved_ID_Filter==DEFAULT_MASK)
                   u8g2.print("-----+CAN Sniffer+-----");
-               //   for(int i = 0;i < len; i++)
-                  
+                  else 
+                  {
+                  u8g2.print("Current Filter:0x");
+                  u8g2.print(saved_ID_Filter,HEX);
+                  u8g2.print("  ");
+                  }
                   
                   if ((r_msg = canBus.recv()) != NULL)
                   {
