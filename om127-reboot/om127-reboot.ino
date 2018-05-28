@@ -162,6 +162,7 @@ wait_ack++;
   return mbx ;
 }
 
+//Blink led with being stuck in a loop
 void Led_Blink()
 
 {
@@ -287,7 +288,7 @@ void CAN_Change()
   }
 }
 
-byte st = 0x31; // canbus reply value- soon not needed
+
 
   /**** ISO 9141-2. This protocol has an asynchronous serial data rate of 10.4 kBaud. It is somewhat similar to RS-232, but that the signal levels are different, and that communications happens on a single, bidirectional line without extra handshake signals. ISO 9141-2 is primarily used in Chrysler, European, and Asian vehicles.
    *  
@@ -574,6 +575,348 @@ void dump_flash()
         }
 }
 
+void Send_PID()
+{
+ CanMsg* local_msg = new CanMsg[6] ;
+ CanMsg* local_msg_send = new CanMsg[6] ;
+ int MAX_ROW = 4;
+ int ACTUAL_ROW = 0;
+ int Button_Key =0;
+ int do_once=0;
+//setup some messages to send
+//standard pid 0x00
+    local_msg_send[0].ID=0x7DF;
+    local_msg_send[0].Data[0]=0x2;
+    local_msg_send[0].Data[1]=0x0;
+    local_msg_send[0].Data[2]=0;
+    local_msg_send[0].Data[3]=0;
+    local_msg_send[0].Data[4]=0;
+    local_msg_send[0].Data[5]=0;
+    local_msg_send[0].Data[6]=0;
+    local_msg_send[0].Data[7]=0;
+//pid 0x01
+    local_msg_send[1].ID=0x7DF;
+    local_msg_send[1].Data[0]=0x2;
+    local_msg_send[1].Data[1]=0x1;
+    local_msg_send[1].Data[2]=0;
+    local_msg_send[1].Data[3]=0;
+    local_msg_send[1].Data[4]=0;
+    local_msg_send[1].Data[5]=0;
+    local_msg_send[1].Data[6]=0;
+    local_msg_send[1].Data[7]=0;
+//pid 0x0
+    local_msg_send[0].ID=0x7DF;
+    local_msg_send[0].Data[0]=0x2;
+    local_msg_send[0].Data[1]=0x2;
+    local_msg_send[0].Data[2]=0;
+    local_msg_send[0].Data[3]=0;
+    local_msg_send[0].Data[4]=0;
+    local_msg_send[0].Data[5]=0;
+    local_msg_send[0].Data[6]=0;
+    local_msg_send[0].Data[7]=0;
+//SendCANmessage(r_msg->ID+9, 8, 0x04, 0x02, 0x02) ;
+canBus.filter(0, 0x7fd, 0x1fffff00,0);
+Button_Key = u8g2.userInterfaceSelectionList("PID Send Menu", 1, "Send PID 0x00\nSend PID 0x01\nSend PID 0x02\nSend PID 0x03");
+switch (Button_Key) {
+       case 0:
+      //do something when var equals 1
+       Serial1.println("Select cancel");
+      break;
+      case 1:
+     while (digitalRead(Exit_Button)==1)
+        {
+           u8g2.firstPage();
+              do 
+                {
+                  u8g2.setCursor(2, 8);
+                  u8g2.print("Sending 0x00");
+                  if (do_once==0){SendCANmessage(0x7df, 8, 0x02, 0x00, 0x00);do_once++;}
+                  
+                  delay(150);
+                if ((r_msg = canBus.recv()) != NULL)
+                  {
+                      local_msg[ACTUAL_ROW].ID = r_msg->ID;
+                      for(int i = 0;i < 7; i++)
+                        local_msg[ACTUAL_ROW].Data[i] = r_msg->Data[i];
+                      
+                      old_ID=r_msg->ID;
+                      DataOne=r_msg->Data[0];             
+                      DataTwo=r_msg->Data[1];             
+                      DataThree=r_msg->Data[2];             
+                      DataFour=r_msg->Data[3];             
+                      DataFive=r_msg->Data[4];             
+                      DataSix=r_msg->Data[5];             
+                      DataSeven=r_msg->Data[6];             
+                      DataEight=r_msg->Data[7];             
+                  
+                     // long msgID = 0x7DF ;
+                    //  SendCANmessage(r_msg->ID+9, 8, 0x04, 0x02, 0x02) ;
+               //   u8g2.setFont(u8g2_font_5x7_tf);
+                  //u8g2.print(2,6,r_msg->ID);
+                      if (ACTUAL_ROW>MAX_ROW)
+                      { 
+                        ACTUAL_ROW=1;
+                      //  LOOPING_NOW=1;
+                      }
+                        else
+                          ACTUAL_ROW++;
+                        canBus.free();
+         
+                  }
+                  if (ACTUAL_ROW>0)
+                  {
+                     for(int i = 0;i < ACTUAL_ROW; i++)
+                    {
+                      u8g2.setCursor(2,((i*8))+16);
+                      u8g2.print("[");
+                      u8g2.print(local_msg[i].ID,HEX);
+                      u8g2.print("]");
+                      for(int b = 0;b < 7; b++)
+                      {
+                        u8g2.print(local_msg[i].Data[b],HEX);
+                        u8g2.print(".");
+                      }
+                      
+                    }
+                    u8g2.setCursor(2,55);
+                    u8g2.print("Press Ent to send again");
+                    
+                  }
+                }while ( u8g2.nextPage() );
+              
+              Serial1.print("menu button bit");
+              //while (digitalRead(Menu_Button)==1){}
+              while ((r_msg = canBus.recv()) == NULL){}
+              do_once==1;
+        }//end of while(digitalread
+      case 2:
+     while (digitalRead(Exit_Button)==1)
+        {
+           u8g2.firstPage();
+              do 
+                {
+                  u8g2.setCursor(2, 8);
+                  u8g2.print("Sending 0x01");
+                  if (do_once==0){SendCANmessage(0x7df, 8, 0x02, 0x01, 0x00);do_once++;}
+                  
+                  delay(150);
+                if ((r_msg = canBus.recv()) != NULL)
+                  {
+                      local_msg[ACTUAL_ROW].ID = r_msg->ID;
+                      for(int i = 0;i < 7; i++)
+                        local_msg[ACTUAL_ROW].Data[i] = r_msg->Data[i];
+                      
+                      old_ID=r_msg->ID;
+                      DataOne=r_msg->Data[0];             
+                      DataTwo=r_msg->Data[1];             
+                      DataThree=r_msg->Data[2];             
+                      DataFour=r_msg->Data[3];             
+                      DataFive=r_msg->Data[4];             
+                      DataSix=r_msg->Data[5];             
+                      DataSeven=r_msg->Data[6];             
+                      DataEight=r_msg->Data[7];             
+                      if (ACTUAL_ROW>MAX_ROW)
+                      { 
+                        ACTUAL_ROW=1;
+                      //  LOOPING_NOW=1;
+                      }
+                        else
+                          ACTUAL_ROW++;
+                        canBus.free();
+         
+                  }
+                  if (ACTUAL_ROW>0)
+                  {
+                     for(int i = 0;i < ACTUAL_ROW; i++)
+                    {
+                      u8g2.setCursor(2,((i*8))+16);
+                      u8g2.print("[");
+                      u8g2.print(local_msg[i].ID,HEX);
+                      u8g2.print("]");
+                      for(int b = 0;b < 7; b++)
+                      {
+                        u8g2.print(local_msg[i].Data[b],HEX);
+                        u8g2.print(".");
+                      }
+                      
+                    }
+                    u8g2.setCursor(2,55);
+                    u8g2.print("Press Ent to send again");
+                    
+                  }
+                }while ( u8g2.nextPage() );
+              
+              Serial1.print("menu button bit");
+              //while (digitalRead(Menu_Button)==1){}
+              while ((r_msg = canBus.recv()) == NULL){}
+              do_once==1;
+        }//end of while(digitalread
+      break;
+      case 3:
+     while (digitalRead(Exit_Button)==1)
+        {
+           u8g2.firstPage();
+              do 
+                {
+                  u8g2.setCursor(2, 8);
+                  u8g2.print("Sending 0x02");
+                  if (do_once==0){SendCANmessage(0x7df, 8, 0x02, 0x02, 0x00);do_once++;}
+                  
+                  delay(150);
+                if ((r_msg = canBus.recv()) != NULL)
+                  {
+                      local_msg[ACTUAL_ROW].ID = r_msg->ID;
+                      for(int i = 0;i < 7; i++)
+                        local_msg[ACTUAL_ROW].Data[i] = r_msg->Data[i];
+                      
+                      //old_ID=r_msg->ID;
+                      DataOne=r_msg->Data[0];             
+                      DataTwo=r_msg->Data[1];             
+                      DataThree=r_msg->Data[2];             
+                      DataFour=r_msg->Data[3];             
+                      DataFive=r_msg->Data[4];             
+                      DataSix=r_msg->Data[5];             
+                      DataSeven=r_msg->Data[6];             
+                      DataEight=r_msg->Data[7];             
+                  
+         
+                      if (ACTUAL_ROW>MAX_ROW)
+                      { 
+                        ACTUAL_ROW=1;
+                      //  LOOPING_NOW=1;
+                      }
+                        else
+                          ACTUAL_ROW++;
+                        canBus.free();
+         
+                  }
+                  if (ACTUAL_ROW>0)
+                  {
+                     for(int i = 0;i < ACTUAL_ROW; i++)
+                    {
+                      u8g2.setCursor(2,((i*8))+16);
+                      u8g2.print("[");
+                      u8g2.print(local_msg[i].ID,HEX);
+                      u8g2.print("]");
+                      for(int b = 0;b < 7; b++)
+                      {
+                        u8g2.print(local_msg[i].Data[b],HEX);
+                        u8g2.print(".");
+                      }
+                      
+                    }
+                    u8g2.setCursor(2,55);
+                    u8g2.print("Press Ent to send again");
+                    
+                  }
+                }while ( u8g2.nextPage() );
+              
+              Serial1.print("menu button bit");
+              //while (digitalRead(Menu_Button)==1){}
+              while ((r_msg = canBus.recv()) == NULL){}
+              do_once==1;
+        }//end of while(digitalread
+      break;
+      case 4:
+      while (digitalRead(Exit_Button)==1)
+        {
+           u8g2.firstPage();
+              do 
+                {
+                  u8g2.setCursor(2, 8);
+                  u8g2.print("Sending 0x04");
+                  if (do_once==0){SendCANmessage(0x7df, 8, 0x02, 0x04, 0x00);do_once++;}
+                  
+                  delay(150);
+                if ((r_msg = canBus.recv()) != NULL)
+                  {
+                      local_msg[ACTUAL_ROW].ID = r_msg->ID;
+                      for(int i = 0;i < 7; i++)
+                        local_msg[ACTUAL_ROW].Data[i] = r_msg->Data[i];
+                      
+                      old_ID=r_msg->ID;
+                      DataOne=r_msg->Data[0];             
+                      DataTwo=r_msg->Data[1];             
+                      DataThree=r_msg->Data[2];             
+                      DataFour=r_msg->Data[3];             
+                      DataFive=r_msg->Data[4];             
+                      DataSix=r_msg->Data[5];             
+                      DataSeven=r_msg->Data[6];             
+                      DataEight=r_msg->Data[7];             
+         
+                      if (ACTUAL_ROW>MAX_ROW)
+                      { 
+                        ACTUAL_ROW=1;
+                      //  LOOPING_NOW=1;
+                      }
+                        else
+                          ACTUAL_ROW++;
+                        canBus.free();
+         
+                  }
+                  if (ACTUAL_ROW>0)
+                  {
+                     for(int i = 0;i < ACTUAL_ROW; i++)
+                    {
+                      u8g2.setCursor(2,((i*8))+16);
+                      u8g2.print("[");
+                      u8g2.print(local_msg[i].ID,HEX);
+                      u8g2.print("]");
+                      for(int b = 0;b < 7; b++)
+                      {
+                        u8g2.print(local_msg[i].Data[b],HEX);
+                        u8g2.print(".");
+                      }
+                      
+                    }
+                    u8g2.setCursor(2,55);
+                    u8g2.print("Press Ent to send again");
+                    
+                  }
+                }while ( u8g2.nextPage() );
+              
+              Serial1.print("menu button bit");
+              //while (digitalRead(Menu_Button)==1){}
+              while ((r_msg = canBus.recv()) == NULL){}
+              do_once==1;
+        }//end of while(digitalread
+        break;
+      default:
+      //do something
+      break;
+/*
+    if ((r_msg = canBus.recv()) != NULL)
+                  {
+                      local_msg[ACTUAL_ROW].ID = r_msg->ID;
+                      for(int i = 0;i < 7; i++)
+                        local_msg[ACTUAL_ROW].Data[i] = r_msg->Data[i];
+                      
+                      old_ID=r_msg->ID;
+                      DataOne=r_msg->Data[0];             
+                      DataTwo=r_msg->Data[1];             
+                      DataThree=r_msg->Data[2];             
+                      DataFour=r_msg->Data[3];             
+                      DataFive=r_msg->Data[4];             
+                      DataSix=r_msg->Data[5];             
+                      DataSeven=r_msg->Data[6];             
+                      DataEight=r_msg->Data[7];             
+                  
+                     // long msgID = 0x7DF ;
+                    //  SendCANmessage(r_msg->ID+9, 8, 0x04, 0x02, 0x02) ;
+               //   u8g2.setFont(u8g2_font_5x7_tf);
+                  //u8g2.print(2,6,r_msg->ID);
+                      if (ACTUAL_ROW>MAX_ROW)
+                      { 
+                        ACTUAL_ROW=1;
+                      //  LOOPING_NOW=1;
+                      }
+                        else
+                          ACTUAL_ROW++;
+                        canBus.free();
+         
+                  }*/
+                  }
+}
 void Tick_menu()//This is a ghetto time stamp solution, we only need to know what order the pid's come in, not really 'exatcly when' yet, maybe next feature
 {
   int stamp;
@@ -1253,7 +1596,8 @@ void loop(void) {
       if (digitalRead(Up_Button)!=1){
             while (digitalRead(Up_Button)!=1){}
                 //nothing right now
-                SNIFF_Menu();
+                //SNIFF_Menu();
+                Send_PID();
                 // dump_flash();
             //Serial1.print("Up Pressed");
         
