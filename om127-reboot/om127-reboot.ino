@@ -14,7 +14,7 @@
 
 int incomingByte = 0;   // for incoming serial data
 // OM127 LCD Screen Type
-U8G2_ST7565_ERC12864_1_4W_SW_SPI  u8g2(U8G2_R0,/* clock=*/ PB0, /* data=*/ PB1, /* cs=*/ PB10, /* dc=*/ PB8, /* reset=*/PC13);
+
 
 
 typedef struct
@@ -30,20 +30,17 @@ typedef struct
  const long blink_delay = 1000;
  const int ledPin =  PA8;
  unsigned long previousMillis = 0; 
-  unsigned long previousMillis_two = 0; 
+ unsigned long previousMillis_two = 0; 
  int ledState = HIGH; 
  boolean cur_state =false;
-int LOG_ENABLED = 0;
-boolean select_char=false;
+ int LOG_ENABLED = 0;
+ boolean select_char=false;
 
 #define DEFAULT_MASK  0x7df
 int saved_ID_Filter = DEFAULT_MASK;
 winbondFlashSPI mem;
   
-//begin(uint8_t menu_select_pin, uint8_t menu_next_pin, uint8_t menu_prev_pin, uint8_t menu_up_pin = U8X8_PIN_NONE, uint8_t menu_down_pin = U8X8_PIN_NONE, uint8_t menu_home_pin = U8X8_PIN_NONE)
-// init LCD with Menu buttons tied in
- // u8g2.begin(PB14,PB12, PB15, U8X8_PIN_NONE, U8X8_PIN_NONE, PB13);
-  //u8g2.begin(Menu_Button,Down_Button,Up_Button,U8X8_PIN_NONE,U8X8_PIN_NONE,Exit_Button);
+
 #define SPI_SLAVE_SEL_PIN    PA4
 #define Up_Button            PB15
 #define Down_Button          PB12
@@ -62,8 +59,13 @@ winbondFlashSPI mem;
 #define J1850_TWO            PA1 //Comp1 output - def input 
 #define J1850_THREE          PA2 //Q8 Base NPN  On to Q9 Base PNP onto //Sets PIN 10 OBD High 5V
 #define J1850_FOUR           PA3//Q6  // Creates 5v Differential On PIN2/10 On obd
+#define LCD_CLOCK            PB0
+#define LCD_DATA             PB1
+#define LCD_CS               PB10
+#define LCD_DC               PB8
+#define LCD_RESET            PC13
 
-
+U8G2_ST7565_ERC12864_1_4W_SW_SPI  u8g2(U8G2_R0,/* clock=*/ LCD_CLOCK, /* data=*/ LCD_DATA, /* cs=*/ LCD_CS, /* dc=*/ LCD_DC, /* reset=*/LCD_RESET);
 //define unknown pins
 //PA1 goes to Comparater out 1//UART2 RTS
 //PA2 goes to Q8 Gate ///uart2 tx 
@@ -162,7 +164,7 @@ wait_ack++;
   return mbx ;
 }
 
-//Blink led with being stuck in a loop
+//Blink led without being stuck in a loop/delay
 void Led_Blink()
 
 {
@@ -238,7 +240,7 @@ void CAN_Change()
   int Button_Key =0;
   CAN_STATUS Stat ;
   
-  Button_Key = u8g2.userInterfaceSelectionList("CAN Speed Options", 1, "CAN 500\nCAN 250");
+  Button_Key = u8g2.userInterfaceSelectionList("CAN Speed Options", 1, "CAN 500\nCAN 125\nCAN 250");
   switch (Button_Key) {
        case 0:
       //do something when var equals 1
@@ -246,16 +248,19 @@ void CAN_Change()
        Serial1.println("Select cancel");
       break;
       case 2:
-      Serial1.println("can_change_250");
-      Stat = canBus.begin(CAN_SPEED_250, CAN_MODE_NORMAL);
+      Serial1.println("can_change_125");
+      Stat = canBus.begin(CAN_SPEED_125, CAN_MODE_NORMAL);
         if (Stat != CAN_OK){
        Serial1.println("ERROR begin, CAN BUS Stuck");
        Serial1.println(Stat,DEC);
-  }   
+        }   
       break;
       case 3:
-      //do something when var equals 2
-  //    Serial1.println("option 2");
+     Serial1.println("can_change_250");
+      Stat = canBus.begin(CAN_SPEED_250, CAN_MODE_NORMAL);
+        if (Stat != CAN_OK){
+       Serial1.println("ERROR begin, CAN BUS Stuck");
+       Serial1.println(Stat,DEC);}
       break;      
       case 4:
       //do something when var equals 2
@@ -410,7 +415,8 @@ void SNIFF_Menu()
    int ACTUAL_ROW = 0;
    int LOOPING_NOW =0 ;
   u8g2.setFont(u8g2_font_5x7_tf);
-  if (saved_ID_Filter!=DEFAULT_MASK)canBus.filter(0, saved_ID_Filter, 0x1fffffff,0); 
+ // if (saved_ID_Filter!=DEFAULT_MASK)canBus.filter(0, saved_ID_Filter, 0x1fffffff,0); 
+ canBus.filter(0, 0, 0,0);
 //  u8g2.setFont(u8g2_font_6x10_tf);
         while (digitalRead(Exit_Button)==1)
         {
@@ -444,7 +450,7 @@ void SNIFF_Menu()
                       DataEight=r_msg->Data[7];             
                   
                      // long msgID = 0x7DF ;
-                    //  SendCANmessage(r_msg->ID+9, 8, 0x04, 0x02, 0x02) ;
+                      SendCANmessage(r_msg->ID+9, 8, 0x04, 0x02, 0x02) ;//debug response for now, values mean nothing it's just a response.
                //   u8g2.setFont(u8g2_font_5x7_tf);
                   //u8g2.print(2,6,r_msg->ID);
                       if (ACTUAL_ROW>MAX_ROW)
@@ -615,7 +621,7 @@ void Send_PID()
     local_msg_send[0].Data[6]=0;
     local_msg_send[0].Data[7]=0;
 //SendCANmessage(r_msg->ID+9, 8, 0x04, 0x02, 0x02) ;
-canBus.filter(0, 0x7fd, 0x1fffff00,0);
+//canBus.filter(0, 0x7fd, 0x1fffff00,0);
 Button_Key = u8g2.userInterfaceSelectionList("PID Send Menu", 1, "Send PID 0x00\nSend PID 0x01\nSend PID 0x02\nSend PID 0x03");
 switch (Button_Key) {
        case 0:
@@ -623,7 +629,7 @@ switch (Button_Key) {
        Serial1.println("Select cancel");
       break;
       case 1:
-     while (digitalRead(Exit_Button)==1)
+     while (digitalRead(Menu_Button)==1)
         {
            u8g2.firstPage();
               do 
@@ -632,7 +638,7 @@ switch (Button_Key) {
                   u8g2.print("Sending 0x00");
                   if (do_once==0){SendCANmessage(0x7df, 8, 0x02, 0x00, 0x00);do_once++;}
                   
-                  delay(150);
+                 // delay(150);
                 if ((r_msg = canBus.recv()) != NULL)
                   {
                       local_msg[ACTUAL_ROW].ID = r_msg->ID;
@@ -685,8 +691,8 @@ switch (Button_Key) {
                 }while ( u8g2.nextPage() );
               
               Serial1.print("menu button bit");
-              //while (digitalRead(Menu_Button)==1){}
-              while ((r_msg = canBus.recv()) == NULL){}
+              while (digitalRead(Menu_Button)==1){}
+              //while ((r_msg = canBus.recv()) == NULL){}
               do_once==1;
         }//end of while(digitalread
       case 2:
@@ -1361,9 +1367,8 @@ void Main_Menu()
   int input_val = 0;
   u8g2.setFont(u8g2_font_6x10_tf);
 //  u8g2.setFont(u8g2_font_5x7_tf);
-//u8g2.setFontRefHeightAll();    /* this will add some extra space for the text inside the buttons */
-//u8g2.userInterfaceMessage("Boot STM32", "darkspr1te 2018", "USB/CAN Switch", " Ok \n Cancel ");
-Button_Key = u8g2.userInterfaceSelectionList("Darkspr1te OM127 Menu", 1, "Change CAN Speed\nChange CAN bits\nPID Menu\nSniff Menu\nADC Menu\nDump Menu\nSettings Menu\Developer Menu");
+
+Button_Key = u8g2.userInterfaceSelectionList("Darkspr1te OM127 Menu", 1, "Change CAN Speed\nChange CAN bits\nPID Menu\nSniff Menu\nADC Menu\nDump Menu\nSettings Menu\nDeveloper Menu");
 switch (Button_Key) {
        case 0:
       //do something when var equals 1
@@ -1596,8 +1601,8 @@ void loop(void) {
       if (digitalRead(Up_Button)!=1){
             while (digitalRead(Up_Button)!=1){}
                 //nothing right now
-                //SNIFF_Menu();
-                Send_PID();
+                SNIFF_Menu();
+                //Send_PID();
                 // dump_flash();
             //Serial1.print("Up Pressed");
         
